@@ -1,0 +1,114 @@
+name: Flatpak
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      # Bubblewrap needs namespaces unavailable in an ordinary Docker container.
+      options: --privileged
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install SDK and runtime
+        run: |
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --noninteractive flathub org.freedesktop.Sdk//26.08 org.freedesktop.Platform//26.08
+
+      - name: Build
+        run: |
+          flatpak-builder --disable-rofiles-fuse --force-clean --arch=x86_64 \
+            --repo=repo build-dir flatpak/eu.nosini.GalleryDl.yml
+
+      - name: Smoke test against the Platform runtime
+        run: |
+          flatpak --user remote-add --no-gpg-verify local-test "$PWD/repo"
+          flatpak --user install --noninteractive local-test eu.nosini.GalleryDl
+          flatpak run eu.nosini.GalleryDl --version
+          flatpak run eu.nosini.GalleryDl --help
+          flatpak run --command=python3 eu.nosini.GalleryDl -c \
+            'import gallery_dl, requests, yt_dlp, yaml, jinja2, socks, secretstorage, cryptography'
+          flatpak run --command=ffmpeg eu.nosini.GalleryDl -version
+          flatpak run --command=ffprobe eu.nosini.GalleryDl -version
+          flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
+            eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py"
+
+      - name: Create installable bundle
+        run: |
+          flatpak build-bundle --arch=x86_64 \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            repo gallery-dl-x86_64.flatpak eu.nosini.GalleryDl stable
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gallery-dl-x86_64
+          path: gallery-dl-x86_64.flatpak
+          if-no-files-found: error
+
+      - name: Import signing key
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.PUBLISH_FLATPAK == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: |
+          if [[ -z "$GPG_PRIVATE_KEY" ]]; then
+            echo 'Set FLATPAK_GPG_PRIVATE_KEY before enabling PUBLISH_FLATPAK.' >&2
+            exit 1
+          fi
+          export GNUPGHOME="$RUNNER_TEMP/gallery-dl-gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          key=$(gpg --batch --list-secret-keys --with-colons | awk -F: '$1 == "fpr" && !key { key = $10 } END { print key }')
+          test -n "$key"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "GPG_KEY=$key" >> "$GITHUB_ENV"
+
+      - name: Sign and prepare update repository
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.PUBLISH_FLATPAK == 'true'
+        env:
+          REPO_URL: ${{ vars.FLATPAK_REPO_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
+        run: bash scripts/prepare-repository.sh
+
+      - name: Remove imported key
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/gallery-dl-gnupg" ]]; then
+            GNUPGHOME="$RUNNER_TEMP/gallery-dl-gnupg" gpgconf --kill all || true
+            rm -rf "$RUNNER_TEMP/gallery-dl-gnupg"
+          fi
+
+      - uses: actions/upload-pages-artifact@v5
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.PUBLISH_FLATPAK == 'true'
+        with:
+          path: signed-repo
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.PUBLISH_FLATPAK == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

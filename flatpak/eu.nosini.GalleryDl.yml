@@ -1,0 +1,23 @@
+id: eu.nosini.GalleryDl
+branch: stable
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+sdk: org.freedesktop.Sdk
+command: gallery-dl
+build-options:
+  no-debuginfo: true
+
+finish-args:
+  - --share=network
+  - --filesystem=xdg-download:rw
+  - --env=BROWSER=xdg-open
+
+modules:
+  - python-packages.json
+  - name: metadata
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 eu.nosini.GalleryDl.metainfo.xml /app/share/metainfo/eu.nosini.GalleryDl.metainfo.xml
+    sources:
+      - type: file
+        path: eu.nosini.GalleryDl.metainfo.xml

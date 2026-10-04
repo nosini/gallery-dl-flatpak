@@ -1,0 +1,9 @@
+/gallery-dl/
+/.venv/
+/.flatpak-builder/
+/build-dir/
+/repo/
+/signed-repo/
+*.flatpak
+__pycache__/
+*.pyc
