@@ -53,6 +53,18 @@ and exercises a download and its archive using a local HTTP server.
 Every successful build uploads a `gallery-dl-x86_64` artifact containing the bundle.
 Builds and pull requests need no secrets.
 
+To try a CI build, download the `gallery-dl-x86_64` artifact from a successful
+**Flatpak** run in the repository's GitHub Actions tab. Extract the archive,
+then install:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user ./gallery-dl-x86_64.flatpak
+```
+
+These bundles are unsigned and need to be downloaded and installed again for
+each update. The signed repository described below supports `flatpak update`.
+
 Signed publishing is optional:
 
 1. In **Settings → Pages**, select **GitHub Actions** as the source.
@@ -146,7 +158,7 @@ python3.14 -m venv .venv
 .venv/bin/python flatpak/generate-python-deps.py
 ```
 
-Review and commit both the requirements file and the generated module, update
-the version in the README, and run the Flatpak workflow. Regeneration updates
+Review and commit both the requirements file and the generated module,
+and run the Flatpak workflow. Regeneration updates
 transitive dependencies too. Ordinary builds never resolve new dependency
 versions.
