@@ -11,6 +11,7 @@ import shutil
 import ssl
 import subprocess
 import tempfile
+import types
 import wave
 
 ADDONS = json.loads((Path(__file__).resolve().parents[1] / "flatpak/addons.json").read_text())
@@ -43,6 +44,31 @@ def check_config(kind, text):
             config.default("json")
 
 
+def check_keyring_fallback():
+    import gallery_dl_keyring
+    from gallery_dl import config
+    from gallery_dl.extractor.common import Extractor
+    # main() imported gallery-dl before this, so startup must have patched it.
+    assert Extractor.config.__module__ == "gallery_dl_keyring", "Keyring fallback isn't installed"
+    extractor = types.SimpleNamespace(category="example", _cfgpath=("extractor", "example", "page"))
+    stored = {("example", "username"): "keyring user", ("example", "password"): "keyring secret"}
+    real_store = gallery_dl_keyring.store
+    gallery_dl_keyring.store = types.SimpleNamespace(
+        lookup=lambda category, option: stored.get((category, option), gallery_dl_keyring.MISSING))
+    try:
+        config.set(("extractor", "example"), "username", "configured user")
+        config.set(("extractor", "example"), "api-key", None)
+        assert Extractor.config(extractor, "username") == "configured user"
+        assert Extractor.config(extractor, "password") == "keyring secret"
+        assert Extractor.config(extractor, "api-key", "default") is None
+        assert Extractor.config(extractor, "token", "default") == "default"
+    finally:
+        gallery_dl_keyring.store = real_store
+        config.clear()
+    # Checks have no keyring access, which must not break option lookups.
+    assert Extractor.config(extractor, "password", "default") == "default"
+
+
 def check(addon):
     for module in addon["imports"]:
         importlib.import_module(module)
@@ -73,6 +99,8 @@ def check(addon):
         aes = AESGCM(b"k" * 16)
         encrypted = aes.encrypt(b"n" * 12, payload, None)
         assert aes.decrypt(b"n" * 12, encrypted, None) == payload
+        check_keyring_fallback()
+        subprocess.run(["gallery-dl-keyring", "--help"], check=True, stdout=subprocess.DEVNULL)
     elif slug == "psycopg":
         import psycopg
         from psycopg import pq
@@ -125,6 +153,7 @@ def main():
             for module in addon["imports"]:
                 check_base_module(module)
         assert shutil.which("mkvmerge") is None, "mkvmerge leaked into the base app"
+        assert shutil.which("gallery-dl-keyring") is None, "gallery-dl-keyring leaked into the base app"
         check_base_module("zstandard")
         print("Base app has required dependencies, built-in TOML and Zstandard, without bundled optional packages.")
     else:

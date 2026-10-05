@@ -11,6 +11,19 @@ run_download() {
     eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py" "$@"
 }
 
+# Without the remote, flatpak reports "No remote refs found for 'local-test'".
+if ! flatpak --user remotes --columns=name | grep -qx local-test; then
+  echo "Add the local-test remote first:" >&2
+  echo "  flatpak --user remote-add --if-not-exists --no-gpg-verify local-test \"\$PWD/repo\"" >&2
+  exit 1
+fi
+installed=$(flatpak --user list --columns=application | grep -E '^eu\.nosini\.GalleryDl(\.|$)' | sort -u | tr '\n' ' ' || true)
+if [[ -n "$installed" ]]; then
+  echo "These tests need a fresh installation. Uninstall first (your data is kept):" >&2
+  echo "  flatpak --user uninstall --noninteractive $installed" >&2
+  exit 1
+fi
+
 flatpak --user install --noninteractive local-test eu.nosini.GalleryDl
 flatpak run eu.nosini.GalleryDl --version
 flatpak run eu.nosini.GalleryDl --help

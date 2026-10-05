@@ -73,7 +73,7 @@ flatpak run --filesystem=xdg-download:rw \
 ```
 
 Other browser installations may store profiles elsewhere. Chromium-based
-browsers may additionally require the **Browser keyring support** add-on and
+browsers may additionally require the **Desktop keyring support** add-on and
 `--talk-name=org.freedesktop.secrets` to decrypt cookies. Keyring access is opt-in:
 
 ```sh
@@ -83,6 +83,54 @@ flatpak run --filesystem=xdg-download:rw --filesystem=/path/to/browser/profile:r
 ```
 
 Replace the profile path and browser name with those of your browser.
+
+## Keeping passwords in the desktop keyring
+
+With the **Desktop keyring support** add-on, gallery-dl can read site
+usernames, passwords, API keys and tokens from your desktop keyring instead of
+its configuration file. Keyring access is opt-in, so allow it for gallery-dl:
+
+```sh
+flatpak override --user --talk-name=org.freedesktop.secrets eu.nosini.GalleryDl
+```
+
+This gives gallery-dl access to your whole keyring, not just its own entries.
+Instead of the override, you can add `--talk-name=org.freedesktop.secrets`
+to each `flatpak run` command.
+
+Store a value with `gallery-dl-keyring set`, giving the site's name as used in
+gallery-dl's configuration and the option name. It asks for the value without
+showing it:
+
+```sh
+flatpak run --command=gallery-dl-keyring eu.nosini.GalleryDl set danbooru username
+flatpak run --command=gallery-dl-keyring eu.nosini.GalleryDl set danbooru api-key
+```
+
+gallery-dl then uses these values whenever `extractor.danbooru.username` or
+`extractor.danbooru.api-key` isn't set in its configuration. A value in the
+configuration always takes precedence. Sites that log in with a password need
+both `username` and `password`. To see which options are stored, or to remove
+one:
+
+```sh
+flatpak run --command=gallery-dl-keyring eu.nosini.GalleryDl list
+flatpak run --command=gallery-dl-keyring eu.nosini.GalleryDl delete danbooru api-key
+```
+
+Entries appear in keyring managers such as Seahorse as
+"gallery-dl: *site* *option*". They have the attributes `application`
+(`gallery-dl`), `category` (the site) and `option`, so on the host you can also
+store one with `secret-tool`:
+
+```sh
+secret-tool store --label='gallery-dl: danbooru api-key' \
+  application gallery-dl category danbooru option api-key
+```
+
+Your keyring might ask to be unlocked when gallery-dl reads a value. Run
+gallery-dl with `-v` to see which options came from the keyring. Values are
+never shown.
 
 ## Optional features
 
@@ -96,7 +144,7 @@ features you need under **Add-ons**. Each add-on can be installed independently:
 | SOCKS proxy support | PySocks for SOCKS proxies | [PySocks](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-pysocks.flatpakref) |
 | Brotli compression support | Brotli-compressed web responses | [Brotli](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-brotli.flatpakref) |
 | YAML configuration support | PyYAML for YAML configuration files | [PyYAML](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-pyyaml.flatpakref) |
-| Browser keyring support | SecretStorage for decrypting browser cookies | [SecretStorage](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-secretstorage.flatpakref) |
+| Desktop keyring support | Site passwords in the desktop keyring and decrypting browser cookies | [SecretStorage](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-secretstorage.flatpakref) |
 | PostgreSQL archive support | Psycopg for PostgreSQL download archives | [Psycopg](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-psycopg.flatpakref) |
 | System certificate support | truststore for the runtime certificate store | [truststore](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-truststore.flatpakref) |
 | Jinja template support | Jinja templates | [Jinja](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-jinja.flatpakref) |

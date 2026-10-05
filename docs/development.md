@@ -12,8 +12,20 @@ runtime extensions on branch `stable`. The
 builds them together but excludes each extension's files from the application
 ref. `no-autodownload` keeps extensions optional. Their files mount under
 `/app/extensions/<slug>` when installed. Python search paths include the Python
-extensions, and the executable search path includes yt-dlp and mkvmerge. The
-Python 3.14 path must be updated when changing the runtime's Python version.
+extensions, and the executable search path includes yt-dlp, mkvmerge and
+`gallery-dl-keyring`. The Python 3.14 path must be updated when changing the
+runtime's Python version.
+
+The SecretStorage add-on also lets gallery-dl read site options from the
+desktop keyring, without changes to gallery-dl itself. Its files are in
+`flatpak/keyring/`. Python imports `usercustomize` from the add-on's
+site-packages at startup. It adds an import hook that wraps
+`Extractor.config()` once gallery-dl loads `gallery_dl.extractor.common`, so
+options missing from the configuration are looked up in the keyring. The add-on
+doesn't use `sitecustomize`, because the runtime's own `sitecustomize` adds
+`/app`'s site-packages and must not be shadowed. The wrapper relies on
+gallery-dl internals. CI checks that it is installed and falls back correctly;
+when updating gallery-dl, also run the keyring test below.
 
 Each Python add-on includes its own dependency closure, excluding only the
 packages required by the base app. Overlapping dependencies use the same pinned
@@ -72,6 +84,17 @@ flatpak build-update-repo repo
 flatpak --user update --appstream local-test
 python3 scripts/check-appstream.py \
   "${XDG_DATA_HOME:-$HOME/.local/share}/flatpak/appstream/local-test/x86_64/active"
+```
+
+To test the keyring add-on against a real Secret Service, use a Python 3.14
+environment with the pinned gallery-dl and SecretStorage packages. The test
+starts its own D-Bus bus and a temporary GNOME Keyring, so it needs
+`dbus-daemon` and `gnome-keyring-daemon` but doesn't touch your keyring:
+
+```sh
+python3.14 -m venv .venv
+.venv/bin/pip install gallery_dl==1.32.15 SecretStorage==3.5.0
+.venv/bin/python scripts/test-keyring.py
 ```
 
 The manifest uses Freedesktop 26.08 and Python 3.14. Builds need network access

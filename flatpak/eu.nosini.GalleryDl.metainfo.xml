@@ -10,7 +10,7 @@
     <p>gallery-dl downloads image galleries and collections from many image hosting sites.
     It supports custom filenames, download archives, authentication, and filtering.</p>
     <p>This community Flatpak package offers optional add-ons for video downloads,
-    SOCKS proxies, compressed web responses, configuration formats, browser keyrings,
+    SOCKS proxies, compressed web responses, configuration formats, the desktop keyring,
     PostgreSQL archives, system certificates, and templates.</p>
   </description>
   <url type="homepage">https://codeberg.org/mikf/gallery-dl</url>

@@ -63,8 +63,8 @@
   {
     "suffix": "SecretStorage",
     "slug": "secretstorage",
-    "name": "Browser keyring support",
-    "summary": "Decrypt browser cookies using the desktop keyring",
+    "name": "Desktop keyring support",
+    "summary": "Keep site passwords in the desktop keyring and decrypt browser cookies",
     "license": "BSD-3-Clause",
     "homepage": "https://github.com/mitya57/secretstorage",
     "requirements": [
@@ -73,7 +73,9 @@
     "imports": [
       "secretstorage",
       "jeepney",
-      "cryptography"
+      "cryptography",
+      "gallery_dl_keyring",
+      "usercustomize"
     ]
   },
   {
