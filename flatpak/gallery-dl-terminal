@@ -1,0 +1,10 @@
+#!/bin/sh
+# Keep CLI help visible when opened from an application launcher.
+if [ "$#" -eq 0 ]; then
+    set -- --help
+fi
+gallery-dl "$@"
+status=$?
+printf '\nPress Enter to close.'
+read -r _
+exit "$status"

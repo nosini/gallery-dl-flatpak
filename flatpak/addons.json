@@ -1,0 +1,133 @@
+[
+  {
+    "suffix": "YtDlp",
+    "slug": "yt-dlp",
+    "name": "yt-dlp support for gallery-dl",
+    "summary": "Download HLS and DASH videos with yt-dlp",
+    "license": "Unlicense",
+    "homepage": "https://github.com/yt-dlp/yt-dlp",
+    "requirements": [
+      "yt-dlp[default]==2026.8.19"
+    ],
+    "imports": [
+      "yt_dlp",
+      "yt_dlp_ejs",
+      "brotli",
+      "mutagen",
+      "Cryptodome",
+      "websockets"
+    ]
+  },
+  {
+    "suffix": "PySocks",
+    "slug": "pysocks",
+    "name": "SOCKS proxy support",
+    "summary": "Connect through SOCKS proxies with PySocks",
+    "license": "BSD-3-Clause",
+    "homepage": "https://github.com/Anorov/PySocks",
+    "requirements": [
+      "PySocks==1.7.1"
+    ],
+    "imports": [
+      "socks"
+    ]
+  },
+  {
+    "suffix": "Brotli",
+    "slug": "brotli",
+    "name": "Brotli compression support",
+    "summary": "Decode Brotli-compressed web responses",
+    "license": "MIT",
+    "homepage": "https://github.com/google/brotli",
+    "requirements": [
+      "brotli==1.2.0"
+    ],
+    "imports": [
+      "brotli"
+    ]
+  },
+  {
+    "suffix": "PyYAML",
+    "slug": "pyyaml",
+    "name": "YAML configuration support",
+    "summary": "Read gallery-dl configuration in YAML format",
+    "license": "MIT",
+    "homepage": "https://pyyaml.org/",
+    "requirements": [
+      "PyYAML==6.0.3"
+    ],
+    "imports": [
+      "yaml"
+    ]
+  },
+  {
+    "suffix": "SecretStorage",
+    "slug": "secretstorage",
+    "name": "Browser keyring support",
+    "summary": "Decrypt browser cookies using the desktop keyring",
+    "license": "BSD-3-Clause",
+    "homepage": "https://github.com/mitya57/secretstorage",
+    "requirements": [
+      "SecretStorage==3.5.0"
+    ],
+    "imports": [
+      "secretstorage",
+      "jeepney",
+      "cryptography"
+    ]
+  },
+  {
+    "suffix": "Psycopg",
+    "slug": "psycopg",
+    "name": "PostgreSQL archive support",
+    "summary": "Store download archives in PostgreSQL using Psycopg",
+    "license": "LGPL-3.0-only",
+    "homepage": "https://www.psycopg.org/",
+    "requirements": [
+      "psycopg[binary]==3.3.6"
+    ],
+    "imports": [
+      "psycopg",
+      "psycopg_binary"
+    ]
+  },
+  {
+    "suffix": "Truststore",
+    "slug": "truststore",
+    "name": "System certificate support",
+    "summary": "Use the runtime system certificate store for HTTPS",
+    "license": "MIT",
+    "homepage": "https://github.com/sethmlarson/truststore",
+    "requirements": [
+      "truststore==0.10.4"
+    ],
+    "imports": [
+      "truststore"
+    ]
+  },
+  {
+    "suffix": "Jinja",
+    "slug": "jinja",
+    "name": "Jinja template support",
+    "summary": "Render gallery-dl templates with Jinja",
+    "license": "BSD-3-Clause",
+    "homepage": "https://jinja.palletsprojects.com/",
+    "requirements": [
+      "Jinja2==3.1.6"
+    ],
+    "imports": [
+      "jinja2",
+      "markupsafe"
+    ]
+  },
+  {
+    "suffix": "MkvMerge",
+    "slug": "mkvmerge",
+    "name": "Accurate Ugoira timecodes",
+    "summary": "Create Matroska files with accurate Ugoira frame timing using mkvmerge",
+    "license": "GPL-2.0-only",
+    "homepage": "https://mkvtoolnix.download/",
+    "requirements": [],
+    "imports": []
+  }
+]

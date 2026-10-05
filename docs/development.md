@@ -2,17 +2,34 @@
 
 The packaging lives at the repository root. A local `gallery-dl/` checkout is
 ignored and is not used by the build. The manifest installs release wheels
-from PyPI, pinned by URL and SHA-256 in `flatpak/python-packages.json` and
-`flatpak/yt-dlp-packages.json`.
+from PyPI, pinned by URL and SHA-256 in `flatpak/python-packages.json` and the
+`flatpak/*-packages.json` add-on modules. `flatpak/addons.json` lists the add-ons,
+package requirements, names, and IDs used by the build and publishing scripts.
 
-The manifest exports two refs: the application `eu.nosini.GalleryDl` and the
-optional runtime extension `eu.nosini.GalleryDl.YtDlp`, both on branch `stable`.
-The [bundled-extension mechanism](https://docs.flatpak.org/en/latest/extension.html#bundled-extensions)
-builds them together but excludes the extension's files from the application ref.
-`no-autodownload` keeps the extension optional. Its files mount under
-`/app/extensions/yt-dlp` when installed; the app's Python and executable search
-paths include that directory. The Python 3.14 path must be updated when changing
-the runtime's Python version.
+The manifest exports the application `eu.nosini.GalleryDl` and nine optional
+runtime extensions on branch `stable`. The
+[bundled-extension mechanism](https://docs.flatpak.org/en/latest/extension.html#bundled-extensions)
+builds them together but excludes each extension's files from the application
+ref. `no-autodownload` keeps extensions optional. Their files mount under
+`/app/extensions/<slug>` when installed. Python search paths include the Python
+extensions, and the executable search path includes yt-dlp and mkvmerge. The
+Python 3.14 path must be updated when changing the runtime's Python version.
+
+Each Python add-on includes its own dependency closure, excluding only the
+packages required by the base app. Overlapping dependencies use the same pinned
+versions, so add-ons can work independently and coexist. mkvmerge is extracted
+without FUSE from the pinned upstream x86_64 AppImage. Only its executable and
+required private libraries are packaged; the wrapper sets its library path for
+that process. The pinned source archive supplies the tool's license and README.
+FFmpeg comes from the runtime. TOML and Zstandard support come from Python;
+the pinned urllib3 uses the standard-library Zstandard decoder.
+
+The application has a terminal desktop launcher and icon so it can appear in
+GNOME Software, which filters out AppStream console applications. The launcher
+shows gallery-dl's CLI help and waits before closing. Each add-on's AppStream
+`extends` field links it to the main app's ID. All catalog entries and Flatpak
+bundle refs must be present in the repository's exported AppStream catalog for
+software centers to offer the add-ons under the parent app.
 
 ## Local build
 
@@ -27,13 +44,22 @@ flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
   eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py"
 ```
 
-To test the add-on, add the local build repository and install its extension:
+To test the base app and every add-on independently and together:
 
 ```sh
-flatpak remote-add --user --if-not-exists --no-gpg-verify gallery-dl-local "$PWD/repo"
-flatpak install --user gallery-dl-local eu.nosini.GalleryDl.YtDlp//stable
-flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
-  eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py" --with-yt-dlp
+flatpak --user remote-add --if-not-exists --no-gpg-verify local-test "$PWD/repo"
+bash scripts/test-addons.sh
+```
+
+The tests require a fresh installation with no add-ons already installed. They
+install and remove each add-on, then leave all add-ons installed after the final
+combined check. The repository catalog can also be checked after refreshing it:
+
+```sh
+flatpak build-update-repo repo
+flatpak --user update --appstream local-test
+python3 scripts/check-appstream.py \
+  "${XDG_DATA_HOME:-$HOME/.local/share}/flatpak/appstream/local-test/x86_64/active"
 ```
 
 The manifest uses Freedesktop 26.08 and Python 3.14. Builds need network access
@@ -41,14 +67,10 @@ to fetch the runtime and the pinned sources; pip installation itself is offline.
 The native wheels target x86_64. Adding another architecture requires generating
 matching wheels and extending the workflow.
 
-To produce portable installers for the app and optional add-on:
+To produce portable installers for the app and every optional add-on:
 
 ```sh
-flatpak build-bundle --arch=x86_64 \
-  --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
-  repo gallery-dl-x86_64.flatpak eu.nosini.GalleryDl stable
-flatpak build-bundle --runtime --arch=x86_64 \
-  repo gallery-dl-yt-dlp-x86_64.flatpak eu.nosini.GalleryDl.YtDlp stable
+bash scripts/create-bundles.sh
 ```
 
 Local `--install` builds use a temporary build repository as their update origin.
@@ -69,17 +91,24 @@ flatpak install --user --reinstall gallery-dl eu.nosini.GalleryDl
 
 `.github/workflows/flatpak.yml` builds on pushes to `main`, pull requests, and
 manual runs. It builds in the Freedesktop 26.08 Flatpak container, installs the
-result against the Platform runtime, verifies yt-dlp is absent without the add-on,
-and exercises a download and its archive using a local HTTP server. It then installs
-the add-on, checks gallery-dl's yt-dlp integration with a local media download,
-and checks the base app again after uninstalling the add-on.
-Every successful build uploads separate `gallery-dl-x86_64` and
-`gallery-dl-yt-dlp-x86_64` artifacts containing their respective bundles.
+result against the Platform runtime, verifies optional packages are absent from
+the base app, and exercises downloads and archives using a local HTTP server.
+It installs each add-on alone, checks imports and functionality, removes it,
+and checks that the base app is free of optional packages again. It then tests
+all add-ons together. The checks cover compression round trips, templates,
+cryptography, Psycopg's bundled libpq, and mkvmerge remuxing. They don't connect
+to a live PostgreSQL server or desktop keyring.
+
+The workflow also checks the exported catalog consumed by software centers for
+all nine add-ons and their relationship to the parent app. Every successful
+build uploads a `gallery-dl-x86_64` artifact for the app and a
+`gallery-dl-addons-x86_64` artifact containing separate add-on bundles.
 Builds and pull requests need no secrets.
 
 To try a CI build, download the `gallery-dl-x86_64` artifact from a successful
-**Flatpak** run in the repository's GitHub Actions tab. Extract the archive,
-then install:
+**Flatpak** run in the repository's GitHub Actions tab. For optional features,
+also download `gallery-dl-addons-x86_64`. Extract the archives, then install
+the app and whichever add-on bundles you need; for example:
 
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
@@ -98,11 +127,12 @@ Signed publishing is optional:
 3. Add the repository Actions variable `PUBLISH_FLATPAK` with the value `true`.
 4. Push to `main` or manually run the workflow on `main`.
 
-The workflow copies the exported repository and signs both tested refs and its
-summary. Signing the exported app ref preserves the exclusion of extension files;
-exporting the build directory again without those exclusions would put yt-dlp
-back into the app. It exports the public key into `.flatpakrepo` and `.flatpakref`
-files and deploys to GitHub Pages. `gallery-dl-yt-dlp.flatpakref` installs the
+The workflow copies the exported repository and signs the tested app ref, every
+add-on ref, and its summary. Signing the exported app ref preserves the exclusion
+of extension files; exporting the build directory again without those exclusions
+would put optional packages back into the app. It exports the public key into
+`.flatpakrepo` and `.flatpakref`
+files and deploys to GitHub Pages. Each `gallery-dl-<slug>.flatpakref` installs an
 extension separately, using the same repository and signing key as the app.
 Signing secrets are used only on `main`, never for pull requests. Each deployment
 contains a fresh repository with the latest build; it does not retain old refs
@@ -179,17 +209,27 @@ installations. Flatpak documents signing in its
 
 ## Updating dependencies
 
-Change the gallery-dl version in `flatpak/requirements.txt` or the yt-dlp version
-in `flatpak/yt-dlp-requirements.txt`, then resolve dependencies with Python 3.14
-and pip:
+Change the gallery-dl version in `flatpak/requirements.txt` or an optional
+package's requirements in `flatpak/addons.json`, then resolve dependencies with
+Python 3.14 and pip:
 
 ```sh
 python3.14 -m venv .venv
 .venv/bin/python flatpak/generate-python-deps.py
 ```
 
-The generator resolves the base app first, constrains shared dependencies to
-those versions when resolving yt-dlp, and omits shared packages from the add-on.
-Review and commit the requirements and both generated modules, and run the
-Flatpak workflow. Regeneration updates transitive dependencies too. Ordinary
-builds never resolve new dependency versions.
+The generator resolves the base app first, then all optional requirements with
+those base versions constrained. It resolves each add-on against the combined
+versions and omits only base packages. Review and commit the requirements and
+all generated modules, and run the Flatpak workflow. Regeneration updates
+transitive dependencies too. Ordinary builds never resolve new versions.
+
+When adding a new feature, also declare its bundled extension and search path
+in `flatpak/eu.nosini.GalleryDl.yml`, add its module to the manifest, and add a
+functional check in `scripts/check-optionals.py`. Catalog generation, installer
+links, signing, and bundle creation read the central add-on list.
+
+To update mkvmerge, change the AppImage and source archive versions and hashes
+in `flatpak/mkvmerge.json`. Verify the extracted binary's library closure and
+run the runtime checks; upstream AppImages may change their platform library
+requirements.

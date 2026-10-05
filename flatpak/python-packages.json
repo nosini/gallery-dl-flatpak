@@ -2,7 +2,7 @@
   "name": "python-packages",
   "buildsystem": "simple",
   "build-commands": [
-    "pip3 install --no-index --find-links=\"${PWD}\" --only-binary=:all: --no-deps --ignore-installed --prefix=\"${FLATPAK_DEST}\" certifi==2026.7.22 cffi==2.1.1 charset-normalizer==3.5.2 cryptography==50.0.2 gallery_dl==1.32.15 idna==3.20 jeepney==0.9.0 Jinja2==3.1.6 MarkupSafe==3.0.4 pycparser==3.0 PySocks==1.7.1 PyYAML==6.0.3 requests==2.34.2 SecretStorage==3.5.0 truststore==0.10.4 urllib3==2.8.0"
+    "pip3 install --no-index --find-links=\"${PWD}\" --only-binary=:all: --no-deps --ignore-installed --prefix=\"${FLATPAK_DEST}\" certifi==2026.7.22 charset-normalizer==3.5.2 gallery_dl==1.32.15 idna==3.20 requests==2.34.2 urllib3==2.8.0"
   ],
   "sources": [
     {
@@ -13,21 +13,9 @@
     },
     {
       "type": "file",
-      "url": "https://files.pythonhosted.org/packages/e9/02/4e7d553a7ac4b4238b38b3c1b80d486e9d4436f8d2acbf87a0997fe3f402/cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-      "dest-filename": "cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-      "sha256": "b0431303acaea1089ad4b3e9ce4e6518193def1118d4073ca848635ee4ea2e96"
-    },
-    {
-      "type": "file",
       "url": "https://files.pythonhosted.org/packages/18/24/bad3ac4271589df29cf5ce2f5ae490518a5739358052bd0d61209e6fea54/charset_normalizer-3.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
       "dest-filename": "charset_normalizer-3.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
       "sha256": "34276fd796040bf0993ab33a369aa572e6979c7aab225a88893667ad8eac8f7a"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/d3/69/2c833a049475e0a3444e94c7d0aca0aa51d166374a449b09e92ac98138de/cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
-      "dest-filename": "cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
-      "sha256": "9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079"
     },
     {
       "type": "file",
@@ -43,57 +31,9 @@
     },
     {
       "type": "file",
-      "url": "https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl",
-      "dest-filename": "jeepney-0.9.0-py3-none-any.whl",
-      "sha256": "97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
-      "dest-filename": "jinja2-3.1.6-py3-none-any.whl",
-      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/8f/db/d7282caf7ab03af44d5d6fdbaa019b35c7d7f1c90588b839c07cba640d6a/markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
-      "dest-filename": "markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
-      "sha256": "a8e9f292fcda89b324f2f5c91d13f1424a153e40fc2756f38ee23b15835ff300"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl",
-      "dest-filename": "pycparser-3.0-py3-none-any.whl",
-      "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/8d/59/b4572118e098ac8e46e399a1dd0f2d85403ce8bbaad9ec79373ed6badaf9/PySocks-1.7.1-py3-none-any.whl",
-      "dest-filename": "PySocks-1.7.1-py3-none-any.whl",
-      "sha256": "2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/88/f9/16491d7ed2a919954993e48aa941b200f38040928474c9e85ea9e64222c3/pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
-      "dest-filename": "pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
-      "sha256": "c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5"
-    },
-    {
-      "type": "file",
       "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
       "dest-filename": "requests-2.34.2-py3-none-any.whl",
       "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/b7/46/f5af3402b579fd5e11573ce652019a67074317e18c1935cc0b4ba9b35552/secretstorage-3.5.0-py3-none-any.whl",
-      "dest-filename": "secretstorage-3.5.0-py3-none-any.whl",
-      "sha256": "0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137"
-    },
-    {
-      "type": "file",
-      "url": "https://files.pythonhosted.org/packages/19/97/56608b2249fe206a67cd573bc93cd9896e1efb9e98bce9c163bcdc704b88/truststore-0.10.4-py3-none-any.whl",
-      "dest-filename": "truststore-0.10.4-py3-none-any.whl",
-      "sha256": "adaeaecf1cbb5f4de3b1959b42d41f6fab57b2b1666adb59e89cb0b53361d981"
     },
     {
       "type": "file",

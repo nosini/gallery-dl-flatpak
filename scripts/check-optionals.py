@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Exercise optional dependencies without external sites or desktop services."""
+
+import argparse
+import importlib
+import importlib.util
+import io
+import json
+from pathlib import Path
+import shutil
+import ssl
+import subprocess
+import tempfile
+import wave
+
+ADDONS = json.loads((Path(__file__).resolve().parents[1] / "flatpak/addons.json").read_text())
+
+
+def check_config(kind, text):
+    from gallery_dl import config
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / f"config.{kind}"
+        path.write_text(text)
+        settings = {}
+        try:
+            config.default(kind)
+            config.load([str(path)], strict=True, conf=settings)
+            assert settings["extractor"]["timeout"] == 17
+        finally:
+            config.default("json")
+
+
+def check(addon):
+    for module in addon["imports"]:
+        importlib.import_module(module)
+    slug = addon["slug"]
+    payload = b"gallery-dl optional dependency check" * 100
+    if slug == "yt-dlp":
+        import yt_dlp
+        from gallery_dl import ytdl
+        assert ytdl.import_module(None) is yt_dlp
+        subprocess.run(["yt-dlp", "--version"], check=True)
+    elif slug == "pysocks":
+        import socks
+        from urllib3.contrib.socks import SOCKSProxyManager
+        with socks.socksocket() as sock:
+            sock.set_proxy(socks.SOCKS5, "localhost", 1080)
+        assert SOCKSProxyManager("socks5h://localhost:1080").proxy_url
+    elif slug == "brotli":
+        import brotli
+        assert brotli.decompress(brotli.compress(payload)) == payload
+        from urllib3.response import HTTPResponse
+        assert "br" in HTTPResponse.CONTENT_DECODERS
+        response = HTTPResponse(body=io.BytesIO(brotli.compress(payload)), headers={"Content-Encoding": "br"})
+        assert response.data == payload
+    elif slug == "pyyaml":
+        check_config("yaml", "extractor:\n  timeout: 17\n")
+    elif slug == "secretstorage":
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        aes = AESGCM(b"k" * 16)
+        encrypted = aes.encrypt(b"n" * 12, payload, None)
+        assert aes.decrypt(b"n" * 12, encrypted, None) == payload
+    elif slug == "psycopg":
+        import psycopg
+        from psycopg import pq
+        assert pq.__impl__ == "binary", "Psycopg must bring its own libpq"
+        assert pq.version() > 0
+        assert psycopg.sql.Identifier("archive").as_string() == '"archive"'
+    elif slug == "truststore":
+        import truststore
+        context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        assert context.verify_mode == ssl.CERT_REQUIRED
+    elif slug == "jinja":
+        import jinja2
+        assert jinja2.Template("{{ name|upper }}").render(name="gallery-dl") == "GALLERY-DL"
+    elif slug == "mkvmerge":
+        subprocess.run(["mkvmerge", "--version"], check=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            audio = root / "audio.wav"
+            with wave.open(str(audio), "wb") as stream:
+                stream.setnchannels(1)
+                stream.setsampwidth(2)
+                stream.setframerate(8000)
+                stream.writeframes(b"\0\0" * 800)
+            output = root / "audio.mka"
+            subprocess.run(["mkvmerge", "-o", str(output), str(audio)], check=True)
+            identified = json.loads(subprocess.check_output(["mkvmerge", "-J", str(output)], text=True))
+            assert identified["tracks"][0]["type"] == "audio"
+    print(f"{slug}: optional dependency check passed.")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=["base", "all"] + [a["slug"] for a in ADDONS])
+    mode = parser.parse_args().mode
+    import gallery_dl
+    import requests
+    import tomllib
+    from compression import zstd
+    from gallery_dl.extractor.common import ZSTD
+    from urllib3.response import HTTPResponse
+    assert gallery_dl and requests and tomllib.loads("enabled = true")["enabled"]
+    check_config("toml", "[extractor]\ntimeout = 17\n")
+    payload = b"gallery-dl built-in Zstandard check" * 100
+    assert zstd.decompress(zstd.compress(payload)) == payload
+    assert ZSTD and "zstd" in HTTPResponse.CONTENT_DECODERS
+    response = HTTPResponse(body=io.BytesIO(zstd.compress(payload)), headers={"Content-Encoding": "zstd"})
+    assert response.data == payload
+    if mode == "base":
+        for addon in ADDONS:
+            for module in addon["imports"]:
+                assert importlib.util.find_spec(module) is None, f"{module} leaked into the base app"
+        assert shutil.which("mkvmerge") is None, "mkvmerge leaked into the base app"
+        assert importlib.util.find_spec("zstandard") is None
+        print("Base app has required dependencies, built-in TOML and Zstandard, without optional packages.")
+    else:
+        for addon in ADDONS:
+            if mode in ("all", addon["slug"]):
+                check(addon)
+
+
+if __name__ == "__main__":
+    main()

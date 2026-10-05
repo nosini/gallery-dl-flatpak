@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=gallery-dl
+Comment=Download image galleries and collections from a terminal
+Exec=gallery-dl-terminal
+Icon=eu.nosini.GalleryDl
+Terminal=true
+Categories=Network;Utility;
+Keywords=gallery;download;images;video;

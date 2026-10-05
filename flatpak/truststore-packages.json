@@ -1,0 +1,15 @@
+{
+  "name": "truststore-packages",
+  "buildsystem": "simple",
+  "build-commands": [
+    "pip3 install --no-index --find-links=\"${PWD}\" --only-binary=:all: --no-deps --ignore-installed --prefix=\"${FLATPAK_DEST}/extensions/truststore\" truststore==0.10.4"
+  ],
+  "sources": [
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/19/97/56608b2249fe206a67cd573bc93cd9896e1efb9e98bce9c163bcdc704b88/truststore-0.10.4-py3-none-any.whl",
+      "dest-filename": "truststore-0.10.4-py3-none-any.whl",
+      "sha256": "adaeaecf1cbb5f4de3b1959b42d41f6fab57b2b1666adb59e89cb0b53361d981"
+    }
+  ]
+}

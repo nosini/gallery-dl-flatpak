@@ -1,0 +1,22 @@
+{
+  "name": "mkvmerge",
+  "buildsystem": "simple",
+  "build-commands": [
+    "chmod +x mkvtoolnix.AppImage",
+    "./mkvtoolnix.AppImage --appimage-extract > /dev/null",
+    "python3 package-mkvmerge.py squashfs-root ${FLATPAK_DEST}/extensions/mkvmerge",
+    "install -Dm644 COPYING ${FLATPAK_DEST}/extensions/mkvmerge/share/doc/mkvmerge/COPYING",
+    "install -Dm644 README.md ${FLATPAK_DEST}/extensions/mkvmerge/share/doc/mkvmerge/README.md"
+  ],
+  "sources": [
+    {
+      "type": "file", "url": "https://mkvtoolnix.download/appimage/MKVToolNix_GUI-102.0-x86_64.AppImage",
+      "dest-filename": "mkvtoolnix.AppImage", "sha256": "c66345b30d6d5fd640ea982ab5e202a99b9f541a20e42aa19edd90f3ddd5dc9b"
+    },
+    {
+      "type": "archive", "url": "https://mkvtoolnix.download/sources/mkvtoolnix-102.0.tar.xz",
+      "sha256": "9f0a810f17c7df8adb9064a3a41d5784399be412d19704cf080745ad7d45da30"
+    },
+    {"type": "file", "path": "../scripts/package-mkvmerge.py"}
+  ]
+}

@@ -15,6 +15,8 @@ HERE = Path(__file__).resolve().parent
 def resolve(requirements, constraints=None):
     with tempfile.TemporaryDirectory() as tmp:
         report = Path(tmp) / "report.json"
+        requirement_file = Path(tmp) / "requirements.txt"
+        requirement_file.write_text("\n".join(requirements) + "\n")
         command = [
             sys.executable, "-m", "pip", "install", "--dry-run",
             "--ignore-installed", "--only-binary=:all:",
@@ -24,7 +26,7 @@ def resolve(requirements, constraints=None):
             "--platform=manylinux2014_x86_64",
             "--index-url=https://pypi.org/simple",
             "--target", str(Path(tmp) / "target"),
-            "--report", str(report), "-r", str(requirements),
+            "--report", str(report), "-r", str(requirement_file),
         ]
         if constraints:
             constraint_file = Path(tmp) / "constraints.txt"
@@ -70,13 +72,26 @@ def main():
     # pip evaluates dependency environment markers against the running Python.
     if sys.version_info[:2] != (3, 14):
         raise SystemExit("Run this script with Python 3.14 (the Flatpak runtime version).")
-    base = resolve(HERE / "requirements.txt")
-    addon = resolve(HERE / "yt-dlp-requirements.txt", constraints=base)
+    base_requirements = (HERE / "requirements.txt").read_text().splitlines()
+    addons = json.loads((HERE / "addons.json").read_text())
+    base = resolve(base_requirements)
+    # Resolve together first so independently installed add-ons use compatible
+    # versions of overlapping dependencies (for example Brotli and cffi).
+    combined = resolve(
+        base_requirements + [req for addon in addons for req in addon["requirements"]],
+        constraints=base,
+    )
     base_names = {canonical_name(package) for package in base}
-    # Shared dependencies (Requests, certificates, SOCKS) come from the app.
-    addon = [package for package in addon if canonical_name(package) not in base_names]
     write_module(base, "python-packages", "${FLATPAK_DEST}")
-    write_module(addon, "yt-dlp-packages", "${FLATPAK_DEST}/extensions/yt-dlp")
+    for addon in addons:
+        if not addon["requirements"]:
+            continue
+        packages = resolve(addon["requirements"], constraints=combined)
+        # Each add-on includes its dependencies except those already required
+        # by gallery-dl itself, so every add-on works when installed alone.
+        packages = [p for p in packages if canonical_name(p) not in base_names]
+        slug = addon["slug"]
+        write_module(packages, f"{slug}-packages", f"${{FLATPAK_DEST}}/extensions/{slug}")
 
 
 if __name__ == "__main__":
