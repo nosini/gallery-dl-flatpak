@@ -28,8 +28,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check add-on catalog generation
-        run: python3 scripts/test-addon-metadata.py
+      - name: Check packaging tests
+        run: |
+          python3 scripts/test-optionals-check.py
+          python3 scripts/test-addon-metadata.py
 
       - name: Install SDK and runtime
         run: |

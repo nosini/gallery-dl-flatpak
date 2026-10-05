@@ -103,11 +103,13 @@ flatpak install --user --reinstall gallery-dl eu.nosini.GalleryDl
 
 `.github/workflows/flatpak.yml` builds on pushes to `main`, pull requests, and
 manual runs. It builds in the Freedesktop 26.08 Flatpak container, installs the
-result against the Platform runtime, verifies optional packages are absent from
-the base app, and exercises downloads and archives using a local HTTP server.
+result against the Platform runtime, verifies optional packages aren't bundled
+in the base app, and exercises downloads and archives using a local HTTP server.
 It installs each add-on alone, checks imports and functionality, removes it,
-and checks that the base app is free of optional packages again. It then tests
-all add-ons together. The checks cover compression round trips, templates,
+and checks that the base app is free of bundled optional packages again. Python
+dependencies supplied by the runtime, such as MarkupSafe, are allowed only when
+their module paths resolve under `/usr`; copies under `/app` fail the check.
+It then tests all add-ons together. The checks cover compression round trips, templates,
 cryptography, Psycopg's bundled libpq, and mkvmerge remuxing. They don't connect
 to a live PostgreSQL server or desktop keyring.
 

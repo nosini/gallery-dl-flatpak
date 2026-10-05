@@ -16,6 +16,19 @@ import wave
 ADDONS = json.loads((Path(__file__).resolve().parents[1] / "flatpak/addons.json").read_text())
 
 
+def check_base_module(module):
+    spec = importlib.util.find_spec(module)
+    if spec is None:
+        return
+    paths = ([spec.origin] if spec.origin else []) + list(spec.submodule_search_locations or ())
+    # Dependencies already in the Platform are available without an add-on.
+    # Reject anything supplied by the app or a mounted extension instead.
+    assert paths and all(Path(path).resolve().is_relative_to("/usr") for path in paths), (
+        f"{module} leaked into the base app from {paths}"
+    )
+    print(f"{module}: supplied by the runtime ({paths[0]}).")
+
+
 def check_config(kind, text):
     from gallery_dl import config
     with tempfile.TemporaryDirectory() as tmp:
@@ -110,10 +123,10 @@ def main():
     if mode == "base":
         for addon in ADDONS:
             for module in addon["imports"]:
-                assert importlib.util.find_spec(module) is None, f"{module} leaked into the base app"
+                check_base_module(module)
         assert shutil.which("mkvmerge") is None, "mkvmerge leaked into the base app"
-        assert importlib.util.find_spec("zstandard") is None
-        print("Base app has required dependencies, built-in TOML and Zstandard, without optional packages.")
+        check_base_module("zstandard")
+        print("Base app has required dependencies, built-in TOML and Zstandard, without bundled optional packages.")
     else:
         for addon in ADDONS:
             if mode in ("all", addon["slug"]):
