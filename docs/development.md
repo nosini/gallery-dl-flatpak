@@ -148,6 +148,12 @@ would put optional packages back into the app. It exports the public key into
 `.flatpakrepo` and `.flatpakref`
 files and deploys to GitHub Pages. Each `gallery-dl-<slug>.flatpakref` installs an
 extension separately, using the same repository and signing key as the app.
+Before signing the repository summary, publishing resets the `appstream` and
+`appstream2` refs in the copied repository and regenerates them with the signing
+key. Flatpak otherwise reuses unchanged unsigned catalog commits from the test
+repository without adding signatures. CI imports the public key into a fresh
+test remote and pulls the signed catalog with GPG verification enabled before
+deployment.
 Signing secrets are used only on `main`, never for pull requests. Each deployment
 contains a fresh repository with the latest build; it does not retain old refs
 for rollback. The Actions bundle is an unsigned build artifact even when Pages

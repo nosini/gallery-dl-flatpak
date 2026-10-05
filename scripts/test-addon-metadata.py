@@ -49,6 +49,33 @@ def main():
             ], check=True, stdout=subprocess.DEVNULL)
         subprocess.run(["flatpak", "build-update-repo", str(repo)],
                        check=True, stdout=subprocess.DEVNULL)
+        # Catalog content is unchanged by adding signatures to app refs.
+        # Flatpak would keep the unsigned catalog commit unless we reset it.
+        refs_before = set(subprocess.check_output(
+            ["ostree", f"--repo={repo}", "refs"], text=True,
+        ).splitlines())
+        catalogs_before = {ref: subprocess.check_output(
+            ["ostree", f"--repo={repo}", "rev-parse", ref], text=True,
+        ).strip() for ref in refs_before if ref.startswith(("appstream/", "appstream2/"))}
+        assert {"appstream/x86_64", "appstream2/x86_64"} <= catalogs_before.keys()
+        subprocess.run(["flatpak", "build-update-repo", str(repo)],
+                       check=True, stdout=subprocess.DEVNULL)
+        for ref, commit in catalogs_before.items():
+            assert subprocess.check_output(
+                ["ostree", f"--repo={repo}", "rev-parse", ref], text=True,
+            ).strip() == commit, "Expected an unchanged catalog to reuse its commit"
+        subprocess.run(["bash", str(root / "scripts/reset-appstream-refs.sh"), str(repo)], check=True)
+        refs_after = set(subprocess.check_output(
+            ["ostree", f"--repo={repo}", "refs"], text=True,
+        ).splitlines())
+        assert refs_after == refs_before - catalogs_before.keys(), "Catalog reset changed package refs"
+        subprocess.run(["flatpak", "build-update-repo", str(repo)],
+                       check=True, stdout=subprocess.DEVNULL)
+        for ref in catalogs_before:
+            parent = subprocess.check_output([
+                "ostree", f"--repo={repo}", "show", "--raw", ref,
+            ], text=True)
+            assert ", @ay []," in parent, "Regenerated catalog must have no previous commit"
         published = subprocess.check_output([
             "ostree", f"--repo={repo}", "cat", "appstream/x86_64", "/appstream.xml.gz",
         ])
