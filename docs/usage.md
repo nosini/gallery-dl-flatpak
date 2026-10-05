@@ -138,6 +138,17 @@ Your keyring might ask to be unlocked when gallery-dl reads a value. Run
 gallery-dl with `-v` to see which options came from the keyring; those log
 lines are marked `[flatpak-keyring]`. Values are never shown.
 
+## Routing gallery-dl's traffic by process
+
+Proxy clients and firewalls that apply rules per program identify gallery-dl
+by its executable, `gallery-dl-flatpak` (path `/app/bin/gallery-dl-flatpak`),
+rather than as a generic Python program. Use that name in rules that match
+the process name, such as `PROCESS-NAME,gallery-dl-flatpak` in Clash-based
+clients. Tools such as `ps`, `top` and `pgrep` still list it as `gallery-dl`.
+
+Downloads made through the yt-dlp add-on run in the same process. Commands
+started with `flatpak run --command=...` run under their own names.
+
 ## Optional features
 
 Install gallery-dl first, then open its page in GNOME Software and choose the

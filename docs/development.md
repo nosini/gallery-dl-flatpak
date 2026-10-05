@@ -16,6 +16,14 @@ extensions, and the executable search path includes yt-dlp, mkvmerge and
 `gallery-dl-keyring`. The Python 3.14 path must be updated when changing the
 runtime's Python version.
 
+The `process-name` module copies the runtime's Python launcher to
+`/app/bin/gallery-dl-flatpak` and points the `gallery-dl` script's shebang at
+it, so programs that identify processes by executable can tell gallery-dl
+apart from other Python programs. The launcher is only a small wrapper around
+the runtime's libpython, so it keeps working across runtime updates on the
+same branch. `check-optionals.py` checks the executable of a running
+`gallery-dl`.
+
 The SecretStorage add-on also lets gallery-dl read site options from the
 desktop keyring. This feature belongs to this package, not to upstream
 gallery-dl, and works without changes to gallery-dl itself. Its files are in

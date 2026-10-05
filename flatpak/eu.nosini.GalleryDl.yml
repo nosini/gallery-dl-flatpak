@@ -70,6 +70,14 @@ add-extensions:
     autodelete: true
 modules:
   - python-packages.json
+  # Run gallery-dl through a copy of the runtime's Python launcher, so tools
+  # that identify processes by executable see gallery-dl-flatpak, not python3.
+  - name: process-name
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 /usr/bin/python3 /app/bin/gallery-dl-flatpak
+      - sed -i '1s|^#!.*python.*$|#!/app/bin/gallery-dl-flatpak|' /app/bin/gallery-dl
+      - test "$(head -n1 /app/bin/gallery-dl)" = '#!/app/bin/gallery-dl-flatpak'
   - yt-dlp-packages.json
   - pysocks-packages.json
   - brotli-packages.json

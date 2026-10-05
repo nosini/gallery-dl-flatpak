@@ -44,6 +44,18 @@ def check_config(kind, text):
             config.default("json")
 
 
+def check_process_name():
+    # Waiting for URLs on stdin keeps gallery-dl running while it is inspected.
+    process = subprocess.Popen(["gallery-dl", "--config-ignore", "-i", "-"],
+                               stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+    try:
+        executable = Path(f"/proc/{process.pid}/exe").readlink()
+    finally:
+        process.communicate(timeout=30)
+    assert executable == Path("/app/bin/gallery-dl-flatpak"), f"gallery-dl runs as {executable}"
+    print("gallery-dl runs as gallery-dl-flatpak.")
+
+
 def check_keyring_fallback():
     import gallery_dl_keyring
     from gallery_dl import config
@@ -143,6 +155,7 @@ def main():
     from urllib3.response import HTTPResponse
     assert gallery_dl and requests and tomllib.loads("enabled = true")["enabled"]
     check_config("toml", "[extractor]\ntimeout = 17\n")
+    check_process_name()
     payload = b"gallery-dl built-in Zstandard check" * 100
     assert zstd.decompress(zstd.compress(payload)) == payload
     assert ZSTD and "zstd" in HTTPResponse.CONTENT_DECODERS
