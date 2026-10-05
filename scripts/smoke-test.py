@@ -48,6 +48,22 @@ def main():
             subprocess.run(command, check=True, timeout=30)
             assert not list(output.iterdir()), "Archived download was fetched again"
             print("Download, destination argument, and archive smoke tests passed.")
+            # The sandbox's home folder is temporary unless it is shared, so
+            # gallery-dl must refuse to download there instead of losing files.
+            import gallery_dl_flatpak
+            unshared = Path.home() / "gallery-dl unshared check"
+            if gallery_dl_flatpak.is_discarded(unshared):
+                result = subprocess.run(
+                    ["gallery-dl", "--config-ignore", "--no-input", "-D", str(unshared),
+                     f"http://127.0.0.1:{server.server_port}/image.png"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                assert result.returncode != 0, "Download to an unshared folder succeeded"
+                assert not unshared.exists(), "gallery-dl wrote to an unshared folder"
+                assert f"--filesystem={unshared}:rw" in result.stderr, result.stderr
+                print("Download to a folder that isn't shared was refused.")
+            else:
+                print("Skipped the unshared folder check: the home folder is shared.")
             if args.with_yt_dlp:
                 # Use an actual audio file so yt-dlp's generic extractor can
                 # download it locally through gallery-dl's ytdl integration.

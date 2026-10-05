@@ -47,6 +47,13 @@ For permanent access to Downloads instead:
 flatpak override --user --filesystem=xdg-download:rw eu.nosini.GalleryDl
 ```
 
+The folder must exist when gallery-dl starts; otherwise Flatpak ignores the
+permission. Inside the sandbox, folders without access still appear to be
+writable, but anything saved there is deleted when gallery-dl exits. This
+package therefore makes gallery-dl refuse such a download folder and show the
+permission it needs, instead of downloading files that would be lost. This
+check is an addition of this package, not part of upstream gallery-dl.
+
 Once you grant permanent access, the shell alias can download with
 `gallery-dl -d /path/to/pictures 'URL'` (or your Downloads path).
 

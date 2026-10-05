@@ -16,13 +16,22 @@ extensions, and the executable search path includes yt-dlp, mkvmerge and
 `gallery-dl-keyring`. The Python 3.14 path must be updated when changing the
 runtime's Python version.
 
-The `process-name` module copies the runtime's Python launcher to
-`/app/bin/gallery-dl-flatpak` and points the `gallery-dl` script's shebang at
-it, so programs that identify processes by executable can tell gallery-dl
-apart from other Python programs. The launcher is only a small wrapper around
-the runtime's libpython, so it keeps working across runtime updates on the
-same branch. `check-optionals.py` checks the executable of a running
-`gallery-dl`.
+The `launcher` module replaces pip's `gallery-dl` script with
+`flatpak/launcher/gallery-dl`, which runs through a copy of the runtime's
+Python launcher at `/app/bin/gallery-dl-flatpak`. Programs that identify
+processes by executable can therefore tell gallery-dl apart from other Python
+programs. The copy is only a small wrapper around the runtime's libpython, so it
+keeps working across runtime updates on the same branch. `check-optionals.py`
+checks the executable of a running `gallery-dl`.
+
+Before running gallery-dl, the launcher's `gallery_dl_flatpak` module wraps
+`DownloadJob.handle_directory()`. Inside the sandbox, each download folder is
+looked up in `/proc/self/mountinfo`; a folder on the sandbox's temporary root
+filesystem isn't shared with the host, so gallery-dl aborts with the permission
+to grant instead of saving files that would be lost. `test-addons.sh` runs
+`scripts/test-launcher.py` inside the app, which tests this against the
+packaged gallery-dl with simulated mounts, and the smoke test checks it in the
+real sandbox.
 
 The SecretStorage add-on also lets gallery-dl read site options from the
 desktop keyring. This feature belongs to this package, not to upstream

@@ -1,0 +1,6 @@
+#!/app/bin/gallery-dl-flatpak
+import sys
+
+from gallery_dl_flatpak import main
+
+sys.exit(main())
