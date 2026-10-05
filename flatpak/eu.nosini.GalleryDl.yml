@@ -11,13 +11,35 @@ finish-args:
   - --share=network
   - --filesystem=xdg-download:rw
   - --env=BROWSER=xdg-open
+  - --env=PYTHONPATH=/app/extensions/yt-dlp/lib/python3.14/site-packages
+  - --env=PATH=/app/extensions/yt-dlp/bin:/app/bin:/usr/bin
+
+add-extensions:
+  eu.nosini.GalleryDl.YtDlp:
+    directory: extensions/yt-dlp
+    version: stable
+    bundle: true
+    no-autodownload: true
+    autodelete: true
 
 modules:
   - python-packages.json
+  - yt-dlp-packages.json
   - name: metadata
     buildsystem: simple
     build-commands:
       - install -Dm644 eu.nosini.GalleryDl.metainfo.xml /app/share/metainfo/eu.nosini.GalleryDl.metainfo.xml
+      - install -Dm644 eu.nosini.GalleryDl.YtDlp.metainfo.xml /app/extensions/yt-dlp/share/metainfo/eu.nosini.GalleryDl.YtDlp.metainfo.xml
+      # Compose the add-on catalog separately; the automatic compose handles
+      # only the main app's metadata.
+      - >-
+        appstreamcli compose --components=eu.nosini.GalleryDl.YtDlp
+        --prefix=/ --origin=eu.nosini.GalleryDl.YtDlp
+        --result-root=/app/extensions/yt-dlp
+        --data-dir=/app/extensions/yt-dlp/share/app-info/xmls
+        /app/extensions/yt-dlp
     sources:
       - type: file
         path: eu.nosini.GalleryDl.metainfo.xml
+      - type: file
+        path: eu.nosini.GalleryDl.YtDlp.metainfo.xml

@@ -7,8 +7,13 @@ set -euo pipefail
 : "${REPO_URL:?}"
 : "${GITHUB_REPOSITORY:?}"
 
-flatpak build-export --gpg-sign="$GPG_KEY" --gpg-homedir="$GNUPGHOME" \
-  signed-repo build-dir stable
+# Copy the exported refs, not the build directory: flatpak-builder excludes
+# the add-on files from the app ref and exports them as a separate runtime ref.
+cp -a repo signed-repo
+flatpak build-sign --gpg-sign="$GPG_KEY" --gpg-homedir="$GNUPGHOME" \
+  signed-repo eu.nosini.GalleryDl stable
+flatpak build-sign --runtime --gpg-sign="$GPG_KEY" --gpg-homedir="$GNUPGHOME" \
+  signed-repo eu.nosini.GalleryDl.YtDlp stable
 flatpak build-update-repo --gpg-sign="$GPG_KEY" --gpg-homedir="$GNUPGHOME" \
   --title="gallery-dl" --default-branch=stable signed-repo
 
@@ -19,6 +24,16 @@ cat > signed-repo/gallery-dl.flatpakrepo <<EOF
 Title=gallery-dl
 Url=$REPO_URL
 Homepage=https://github.com/$GITHUB_REPOSITORY
+GPGKey=$public_key
+EOF
+cat > signed-repo/gallery-dl-yt-dlp.flatpakref <<EOF
+[Flatpak Ref]
+Name=eu.nosini.GalleryDl.YtDlp
+Branch=stable
+Title=yt-dlp support for gallery-dl
+Url=$REPO_URL
+IsRuntime=true
+SuggestRemoteName=gallery-dl
 GPGKey=$public_key
 EOF
 cat > signed-repo/gallery-dl.flatpakref <<EOF

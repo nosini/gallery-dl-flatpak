@@ -61,8 +61,24 @@ decrypt cookies. Keyring access is opt-in.
 
 ## Video downloads and extra tools
 
-The package includes yt-dlp, and FFmpeg and ffprobe are supplied by the Flatpak
-runtime. Available codecs depend on that runtime.
+Some video downloads need the optional yt-dlp add-on. Install gallery-dl first,
+then add yt-dlp:
+
+```sh
+flatpak install --user https://nosini.github.io/gallery-dl-flatpak/gallery-dl-yt-dlp.flatpakref
+```
+
+gallery-dl detects it automatically; your download commands stay the same.
+The add-on isn't installed automatically with gallery-dl. To update it or
+remove it:
+
+```sh
+flatpak update --user eu.nosini.GalleryDl.YtDlp
+flatpak uninstall --user eu.nosini.GalleryDl.YtDlp
+```
+
+FFmpeg and ffprobe are supplied by the Flatpak runtime. Available codecs depend
+on that runtime.
 
 Some features need additional tools that aren't included, such as mkvmerge or
 a JavaScript runtime for yt-dlp's JavaScript challenges. Programs installed on

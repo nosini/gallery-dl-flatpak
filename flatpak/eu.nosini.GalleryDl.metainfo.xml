@@ -8,8 +8,8 @@
   <description>
     <p>gallery-dl downloads image galleries and collections from many image hosting sites.
     It supports custom filenames, download archives, authentication, and filtering.</p>
-    <p>This community Flatpak package includes yt-dlp integration, SOCKS proxy support,
-    YAML configuration, and Jinja templates.</p>
+    <p>This community Flatpak package includes SOCKS proxy support, YAML configuration,
+    and Jinja templates. An optional yt-dlp add-on provides additional video download support.</p>
   </description>
   <url type="homepage">https://codeberg.org/mikf/gallery-dl</url>
   <provides><binary>gallery-dl</binary></provides>

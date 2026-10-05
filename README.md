@@ -3,8 +3,8 @@
 Download image galleries and collections from
 [hundreds of websites](https://codeberg.org/mikf/gallery-dl/src/branch/master/docs/supportedsites.md)
 using [gallery-dl](https://codeberg.org/mikf/gallery-dl) in a terminal.
-This community Flatpak package is for x86_64 Linux and includes yt-dlp for
-video downloads.
+This community Flatpak package is for x86_64 Linux. An optional yt-dlp add-on
+provides additional video download support.
 
 ## Install
 
@@ -19,6 +19,12 @@ To update:
 
 ```sh
 flatpak update --user eu.nosini.GalleryDl
+```
+
+For video downloads that need yt-dlp, install the add-on:
+
+```sh
+flatpak install --user https://nosini.github.io/gallery-dl-flatpak/gallery-dl-yt-dlp.flatpakref
 ```
 
 ## Download galleries

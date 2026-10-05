@@ -45,22 +45,44 @@ jobs:
           flatpak run eu.nosini.GalleryDl --version
           flatpak run eu.nosini.GalleryDl --help
           flatpak run --command=python3 eu.nosini.GalleryDl -c \
-            'import gallery_dl, requests, yt_dlp, yaml, jinja2, socks, secretstorage, cryptography'
+            'import gallery_dl, requests, yaml, jinja2, socks, secretstorage, cryptography; import importlib.util; assert importlib.util.find_spec("yt_dlp") is None'
           flatpak run --command=ffmpeg eu.nosini.GalleryDl -version
           flatpak run --command=ffprobe eu.nosini.GalleryDl -version
           flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
             eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py"
 
-      - name: Create installable bundle
+      - name: Smoke test with the optional yt-dlp add-on
+        run: |
+          flatpak --user install --noninteractive local-test eu.nosini.GalleryDl.YtDlp//stable
+          flatpak run --command=python3 eu.nosini.GalleryDl -c \
+            'import yt_dlp, yt_dlp_ejs, brotli, mutagen, Cryptodome, websockets; from gallery_dl import ytdl; assert ytdl.import_module(None) is yt_dlp'
+          flatpak run --command=yt-dlp eu.nosini.GalleryDl --version
+          flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
+            eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py" --with-yt-dlp
+          flatpak --user uninstall --noninteractive eu.nosini.GalleryDl.YtDlp//stable
+          flatpak run --command=python3 eu.nosini.GalleryDl -c \
+            'import importlib.util; assert importlib.util.find_spec("yt_dlp") is None'
+          flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
+            eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py"
+
+      - name: Create installable bundles
         run: |
           flatpak build-bundle --arch=x86_64 \
             --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
             repo gallery-dl-x86_64.flatpak eu.nosini.GalleryDl stable
+          flatpak build-bundle --runtime --arch=x86_64 \
+            repo gallery-dl-yt-dlp-x86_64.flatpak eu.nosini.GalleryDl.YtDlp stable
 
       - uses: actions/upload-artifact@v7
         with:
           name: gallery-dl-x86_64
           path: gallery-dl-x86_64.flatpak
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gallery-dl-yt-dlp-x86_64
+          path: gallery-dl-yt-dlp-x86_64.flatpak
           if-no-files-found: error
 
       - name: Import signing key

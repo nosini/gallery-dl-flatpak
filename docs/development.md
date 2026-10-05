@@ -2,7 +2,17 @@
 
 The packaging lives at the repository root. A local `gallery-dl/` checkout is
 ignored and is not used by the build. The manifest installs release wheels
-from PyPI, pinned by URL and SHA-256 in `flatpak/python-packages.json`.
+from PyPI, pinned by URL and SHA-256 in `flatpak/python-packages.json` and
+`flatpak/yt-dlp-packages.json`.
+
+The manifest exports two refs: the application `eu.nosini.GalleryDl` and the
+optional runtime extension `eu.nosini.GalleryDl.YtDlp`, both on branch `stable`.
+The [bundled-extension mechanism](https://docs.flatpak.org/en/latest/extension.html#bundled-extensions)
+builds them together but excludes the extension's files from the application ref.
+`no-autodownload` keeps the extension optional. Its files mount under
+`/app/extensions/yt-dlp` when installed; the app's Python and executable search
+paths include that directory. The Python 3.14 path must be updated when changing
+the runtime's Python version.
 
 ## Local build
 
@@ -17,17 +27,28 @@ flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
   eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py"
 ```
 
+To test the add-on, add the local build repository and install its extension:
+
+```sh
+flatpak remote-add --user --if-not-exists --no-gpg-verify gallery-dl-local "$PWD/repo"
+flatpak install --user gallery-dl-local eu.nosini.GalleryDl.YtDlp//stable
+flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
+  eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py" --with-yt-dlp
+```
+
 The manifest uses Freedesktop 26.08 and Python 3.14. Builds need network access
 to fetch the runtime and the pinned sources; pip installation itself is offline.
 The native wheels target x86_64. Adding another architecture requires generating
 matching wheels and extending the workflow.
 
-To produce a portable installer:
+To produce portable installers for the app and optional add-on:
 
 ```sh
 flatpak build-bundle --arch=x86_64 \
   --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
   repo gallery-dl-x86_64.flatpak eu.nosini.GalleryDl stable
+flatpak build-bundle --runtime --arch=x86_64 \
+  repo gallery-dl-yt-dlp-x86_64.flatpak eu.nosini.GalleryDl.YtDlp stable
 ```
 
 Local `--install` builds use a temporary build repository as their update origin.
@@ -48,9 +69,12 @@ flatpak install --user --reinstall gallery-dl eu.nosini.GalleryDl
 
 `.github/workflows/flatpak.yml` builds on pushes to `main`, pull requests, and
 manual runs. It builds in the Freedesktop 26.08 Flatpak container, installs the
-result against the Platform runtime, checks the CLI and optional Python imports,
-and exercises a download and its archive using a local HTTP server.
-Every successful build uploads a `gallery-dl-x86_64` artifact containing the bundle.
+result against the Platform runtime, verifies yt-dlp is absent without the add-on,
+and exercises a download and its archive using a local HTTP server. It then installs
+the add-on, checks gallery-dl's yt-dlp integration with a local media download,
+and checks the base app again after uninstalling the add-on.
+Every successful build uploads separate `gallery-dl-x86_64` and
+`gallery-dl-yt-dlp-x86_64` artifacts containing their respective bundles.
 Builds and pull requests need no secrets.
 
 To try a CI build, download the `gallery-dl-x86_64` artifact from a successful
@@ -60,6 +84,7 @@ then install:
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install --user ./gallery-dl-x86_64.flatpak
+flatpak install --user ./gallery-dl-yt-dlp-x86_64.flatpak
 ```
 
 These bundles are unsigned and need to be downloaded and installed again for
@@ -73,8 +98,12 @@ Signed publishing is optional:
 3. Add the repository Actions variable `PUBLISH_FLATPAK` with the value `true`.
 4. Push to `main` or manually run the workflow on `main`.
 
-The workflow signs the tested build and repository summary, exports the public
-key into `.flatpakrepo` and `.flatpakref` files, and deploys to GitHub Pages.
+The workflow copies the exported repository and signs both tested refs and its
+summary. Signing the exported app ref preserves the exclusion of extension files;
+exporting the build directory again without those exclusions would put yt-dlp
+back into the app. It exports the public key into `.flatpakrepo` and `.flatpakref`
+files and deploys to GitHub Pages. `gallery-dl-yt-dlp.flatpakref` installs the
+extension separately, using the same repository and signing key as the app.
 Signing secrets are used only on `main`, never for pull requests. Each deployment
 contains a fresh repository with the latest build; it does not retain old refs
 for rollback. The Actions bundle is an unsigned build artifact even when Pages
@@ -150,15 +179,17 @@ installations. Flatpak documents signing in its
 
 ## Updating dependencies
 
-Change the gallery-dl version in `flatpak/requirements.txt`, then resolve its
-dependencies with Python 3.14 and pip:
+Change the gallery-dl version in `flatpak/requirements.txt` or the yt-dlp version
+in `flatpak/yt-dlp-requirements.txt`, then resolve dependencies with Python 3.14
+and pip:
 
 ```sh
 python3.14 -m venv .venv
 .venv/bin/python flatpak/generate-python-deps.py
 ```
 
-Review and commit both the requirements file and the generated module,
-and run the Flatpak workflow. Regeneration updates
-transitive dependencies too. Ordinary builds never resolve new dependency
-versions.
+The generator resolves the base app first, constrains shared dependencies to
+those versions when resolving yt-dlp, and omits shared packages from the add-on.
+Review and commit the requirements and both generated modules, and run the
+Flatpak workflow. Regeneration updates transitive dependencies too. Ordinary
+builds never resolve new dependency versions.

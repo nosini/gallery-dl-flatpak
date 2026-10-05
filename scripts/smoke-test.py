@@ -2,6 +2,7 @@
 """Exercise the installed CLI against a local server, without external sites."""
 
 import base64
+import argparse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -11,6 +12,9 @@ import threading
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--with-yt-dlp", action="store_true")
+    args = parser.parse_args()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         source = root / "source"
@@ -44,6 +48,25 @@ def main():
             subprocess.run(command, check=True, timeout=30)
             assert not list(output.iterdir()), "Archived download was fetched again"
             print("Download, destination argument, and archive smoke tests passed.")
+            if args.with_yt_dlp:
+                # Use an actual audio file so yt-dlp's generic extractor can
+                # download it locally through gallery-dl's ytdl integration.
+                import wave
+                with wave.open(str(source / "audio.wav"), "wb") as audio:
+                    audio.setnchannels(1)
+                    audio.setsampwidth(2)
+                    audio.setframerate(8000)
+                    audio.writeframes(b"\0\0" * 800)
+                video_output = root / "yt-dlp download"
+                subprocess.run([
+                    "gallery-dl", "--config-ignore", "--no-input",
+                    "-D", str(video_output),
+                    f"ytdl:http://127.0.0.1:{server.server_port}/audio.wav",
+                ], check=True, timeout=30)
+                media = list(video_output.iterdir())
+                assert len(media) == 1, media
+                assert media[0].read_bytes() == (source / "audio.wav").read_bytes()
+                print("gallery-dl's yt-dlp download integration passed.")
         finally:
             server.shutdown()
             server.server_close()

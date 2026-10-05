@@ -1,0 +1,45 @@
+{
+  "name": "yt-dlp-packages",
+  "buildsystem": "simple",
+  "build-commands": [
+    "pip3 install --no-index --find-links=\"${PWD}\" --only-binary=:all: --no-deps --ignore-installed --prefix=\"${FLATPAK_DEST}/extensions/yt-dlp\" brotli==1.2.0 mutagen==1.48.1 pycryptodomex==3.24.0 websockets==17.2 yt-dlp==2026.8.19 yt-dlp-ejs==0.8.0"
+  ],
+  "sources": [
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/f3/2f/0976d5b097ff8a22163b10617f76b2557f15f0f39d6a0fe1f02b1a53e92b/brotli-1.2.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "dest-filename": "brotli-1.2.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "cf9cba6f5b78a2071ec6fb1e7bd39acf35071d90a81231d67e92d637776a6a63"
+    },
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/47/d8/a29e4e3991765e7ce4ed1f7e4074fe1ba9da03e0048639734de60f9cadb9/mutagen-1.48.1-py3-none-any.whl",
+      "dest-filename": "mutagen-1.48.1-py3-none-any.whl",
+      "sha256": "4f077fe87d3fc7fba259aa63d8c026b18382ca6a42ef37c61e16f1b1b5b82fe7"
+    },
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/c8/9f/376b705a536c65fe41806babe5cdcfb076273a0d72dfbbb92073d3d9b10c/pycryptodomex-3.24.0-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "dest-filename": "pycryptodomex-3.24.0-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "556e063b52f338bd924fe5c40692cc1f50cb0453bd1d6580b7ffff2eade1a894"
+    },
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/9f/fd/47b8a0361c49da939b976a07b27a72a9f893d01dfcf4d2a28b53419ce1ef/websockets-17.2-cp314-cp314-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl",
+      "dest-filename": "websockets-17.2-cp314-cp314-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl",
+      "sha256": "42cbca10f82a8b2fb1536e8a0830ca6ceeb6bb3d8d64b766e0795369135654a8"
+    },
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/69/b2/8cd1613f56eed7ceb64fbd4df3f1c01246bfb098e6f398228bafda22b80b/yt_dlp-2026.8.19-py3-none-any.whl",
+      "dest-filename": "yt_dlp-2026.8.19-py3-none-any.whl",
+      "sha256": "1d57897e94c6665a0a6f9bc54b34e584284e32c034ffab3a7df25d8f7b24eedf"
+    },
+    {
+      "type": "file",
+      "url": "https://files.pythonhosted.org/packages/e3/bd/520769863744b669440a924271a6159ddd82ad5ae26b4ac4d4b69e9f8d44/yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "dest-filename": "yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "sha256": "79300e5fca7f937a1eeede11f0456862c1b41107ce1d726871e0207424f4bdb4"
+    }
+  ]
+}
