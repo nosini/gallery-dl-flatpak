@@ -31,6 +31,18 @@ shows gallery-dl's CLI help and waits before closing. Each add-on's AppStream
 bundle refs must be present in the repository's exported AppStream catalog for
 software centers to offer the add-ons under the parent app.
 
+The metadata module writes each add-on's metainfo and a compressed AppStream
+catalog using Python. These text-only entries don't need icon or desktop-file
+processing. Catalog generation runs inside the SDK sandbox without calling
+`appstreamcli`, which is a builder-host tool. Flatpak adds each extension's
+bundle ref when merging the catalogs into the repository. The main app's
+desktop metadata is still composed by flatpak-builder on the build host.
+
+To check add-on catalog generation and real repository exports without installing
+the SDK, run `python3 scripts/test-addon-metadata.py`. This needs Python, Flatpak,
+and the OSTree CLI. It also checks that generation works without external tools
+in its search path and produces reproducible compressed catalogs.
+
 ## Local build
 
 Install Flatpak and flatpak-builder through your distribution. Then, on x86_64:

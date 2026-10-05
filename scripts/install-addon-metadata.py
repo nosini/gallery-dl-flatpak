@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Install and compose metadata for all optional extensions in the build."""
+"""Install metainfo and Flatpak catalogs for the optional extensions."""
 
+import copy
+import gzip
 import json
 import os
 from pathlib import Path
-import subprocess
 import xml.etree.ElementTree as ET
 
 
@@ -28,10 +29,19 @@ def main():
         metadata.parent.mkdir(parents=True, exist_ok=True)
         ET.indent(component)
         ET.ElementTree(component).write(metadata, encoding="utf-8", xml_declaration=True)
-        subprocess.run([
-            "appstreamcli", "compose", f"--components={addon_id}", "--prefix=/", f"--origin={addon_id}",
-            f"--result-root={prefix}", f"--data-dir={prefix}/share/app-info/xmls", str(prefix),
-        ], check=True)
+        # These text-only add-ons need no icon or desktop-file processing.
+        # appstreamcli is a builder-host tool, not part of the SDK sandbox.
+        # Write their catalog XML directly; Flatpak attaches the exported ref
+        # when it merges this file into the repository's AppStream catalog.
+        catalog = ET.Element("components", version="1.0", origin=addon_id)
+        entry = copy.deepcopy(component)
+        entry.remove(entry.find("metadata_license"))  # metainfo-only field
+        catalog.append(entry)
+        ET.indent(catalog)
+        data = ET.tostring(catalog, encoding="utf-8", xml_declaration=True)
+        catalog_dir = prefix / "share/app-info/xmls"
+        catalog_dir.mkdir(parents=True, exist_ok=True)
+        (catalog_dir / f"{addon_id}.xml.gz").write_bytes(gzip.compress(data, mtime=0))
 
 
 if __name__ == "__main__":

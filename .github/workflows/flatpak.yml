@@ -28,6 +28,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check add-on catalog generation
+        run: python3 scripts/test-addon-metadata.py
+
       - name: Install SDK and runtime
         run: |
           flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
