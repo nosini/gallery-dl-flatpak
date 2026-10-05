@@ -35,10 +35,12 @@ See [optional features](docs/usage.md#optional-features) for the full list.
 Replace `URL` with the address of a gallery or post:
 
 ```sh
-flatpak run eu.nosini.GalleryDl -d "$(xdg-user-dir DOWNLOAD)" 'URL'
+flatpak run --filesystem=xdg-download:rw eu.nosini.GalleryDl \
+  -d "$(xdg-user-dir DOWNLOAD)" 'URL'
 ```
 
-Downloads are saved in subfolders inside your Downloads directory.
+This grants access to Downloads for this invocation and saves files in
+subfolders there.
 For the full list of options:
 
 ```sh
@@ -54,8 +56,10 @@ configuration file:
 flatpak run eu.nosini.GalleryDl --config-create
 ```
 
-Edit `~/.var/app/eu.nosini.GalleryDl/config/gallery-dl/config.json`, or copy an
-existing gallery-dl JSON configuration there. Available settings are described
+Edit `~/.config/gallery-dl/config.json`, or use your existing gallery-dl
+configuration there. If you set `XDG_CONFIG_HOME` on the host, its `gallery-dl`
+directory is used instead. The legacy `~/.gallery-dl.conf` file is also readable.
+Available settings are described
 in the [configuration reference](https://gdl-org.github.io/docs/configuration.html).
 
 See [the usage guide](docs/usage.md) for downloading to other folders, using
@@ -64,8 +68,9 @@ browser cookies, and setting up a shorter command.
 ## Privacy and access
 
 The app connects to the websites you download from. By default, it can access
-your Downloads folder and its own private storage. Access to other folders,
-browser profiles, and your desktop keyring requires additional permission.
+your gallery-dl configuration directory, the legacy `~/.gallery-dl.conf` file,
+and its own private storage. Access to download folders, browser profiles, and
+your desktop keyring requires additional permission.
 
 ## License
 

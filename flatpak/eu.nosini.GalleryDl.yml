@@ -8,7 +8,8 @@ build-options:
   no-debuginfo: true
 finish-args:
   - --share=network
-  - --filesystem=xdg-download:rw
+  - --filesystem=xdg-config/gallery-dl:create
+  - --filesystem=~/.gallery-dl.conf:ro
   - --env=BROWSER=xdg-open
   - --env=PYTHONPATH=/app/extensions/yt-dlp/lib/python3.14/site-packages:/app/extensions/pysocks/lib/python3.14/site-packages:/app/extensions/brotli/lib/python3.14/site-packages:/app/extensions/pyyaml/lib/python3.14/site-packages:/app/extensions/secretstorage/lib/python3.14/site-packages:/app/extensions/psycopg/lib/python3.14/site-packages:/app/extensions/truststore/lib/python3.14/site-packages:/app/extensions/jinja/lib/python3.14/site-packages
   - --env=PATH=/app/extensions/yt-dlp/bin:/app/extensions/mkvmerge/bin:/app/bin:/usr/bin

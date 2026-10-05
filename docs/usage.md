@@ -8,20 +8,26 @@ Add this alias to your shell configuration to use `gallery-dl` directly:
 alias gallery-dl='flatpak run eu.nosini.GalleryDl'
 ```
 
-Then download with:
+Then view the available options with:
 
 ```sh
-gallery-dl -d "$(xdg-user-dir DOWNLOAD)" 'URL'
+gallery-dl --help
 ```
 
 The `-d` option selects a base directory; gallery-dl creates its usual subfolders
 underneath it. Pass a destination explicitly: gallery-dl otherwise writes
 relative to the current directory, which might not be accessible in the sandbox.
 
-## Downloading to another folder
+## Choosing a download folder
 
-Downloads is accessible by default. To save elsewhere, grant access to an
-existing directory and select it as the destination:
+Download folders require explicit access. To use Downloads for one invocation:
+
+```sh
+flatpak run --filesystem=xdg-download:rw eu.nosini.GalleryDl \
+  -d "$(xdg-user-dir DOWNLOAD)" 'URL'
+```
+
+To use another existing directory, grant access and select it as the destination:
 
 ```sh
 flatpak run --filesystem=/path/to/pictures:rw eu.nosini.GalleryDl \
@@ -35,15 +41,25 @@ to that invocation. To allow the directory permanently:
 flatpak override --user --filesystem=/path/to/pictures:rw eu.nosini.GalleryDl
 ```
 
+For permanent access to Downloads instead:
+
+```sh
+flatpak override --user --filesystem=xdg-download:rw eu.nosini.GalleryDl
+```
+
+Once you grant permanent access, the shell alias can download with
+`gallery-dl -d /path/to/pictures 'URL'` (or your Downloads path).
+
 ## Downloading from sites that require login
 
 You can use cookies exported from your browser in Netscape format. Put the
-export in `~/.var/app/eu.nosini.GalleryDl/config/gallery-dl/cookies.txt`, creating
-the directory if necessary, then run:
+export in `~/.config/gallery-dl/cookies.txt` (or the host's
+`$XDG_CONFIG_HOME/gallery-dl` directory), creating the directory if necessary,
+then run:
 
 ```sh
-flatpak run eu.nosini.GalleryDl \
-  --cookies "$HOME/.var/app/eu.nosini.GalleryDl/config/gallery-dl/cookies.txt" \
+flatpak run --filesystem=xdg-download:rw eu.nosini.GalleryDl \
+  --cookies "${XDG_CONFIG_HOME:-$HOME/.config}/gallery-dl/cookies.txt" \
   -d "$(xdg-user-dir DOWNLOAD)" 'URL'
 ```
 
@@ -51,7 +67,8 @@ To read cookies directly from a browser, grant read access to its profile.
 For a native Firefox installation using `~/.mozilla/firefox`:
 
 ```sh
-flatpak run --filesystem="$HOME/.mozilla/firefox:ro" eu.nosini.GalleryDl \
+flatpak run --filesystem=xdg-download:rw \
+  --filesystem="$HOME/.mozilla/firefox:ro" eu.nosini.GalleryDl \
   --cookies-from-browser firefox -d "$(xdg-user-dir DOWNLOAD)" 'URL'
 ```
 
@@ -60,7 +77,7 @@ browsers may additionally require the **Browser keyring support** add-on and
 `--talk-name=org.freedesktop.secrets` to decrypt cookies. Keyring access is opt-in:
 
 ```sh
-flatpak run --filesystem=/path/to/browser/profile:ro \
+flatpak run --filesystem=xdg-download:rw --filesystem=/path/to/browser/profile:ro \
   --talk-name=org.freedesktop.secrets eu.nosini.GalleryDl \
   --cookies-from-browser chromium -d "$(xdg-user-dir DOWNLOAD)" 'URL'
 ```
