@@ -74,8 +74,9 @@ your desktop keyring requires additional permission.
 
 ## License
 
-This packaging is licensed under [GNU AGPLv3](LICENSE). Upstream gallery-dl is
-licensed under GPL-2.0-only, and bundled dependencies retain their own licenses.
+This packaging is licensed under [GNU AGPLv3](LICENSE) or later. Upstream
+gallery-dl is licensed under GPL-2.0-only, and bundled dependencies retain
+their own licenses.
 This package is maintained separately from upstream gallery-dl.
 
 For contributors: [building and publishing](docs/development.md).

@@ -22,7 +22,9 @@ def main():
         ]:
             ET.SubElement(component, tag).text = value
         description = ET.SubElement(component, "description")
-        ET.SubElement(description, "p").text = addon["summary"] + ". This optional add-on is for gallery-dl."
+        paragraphs = addon.get("description", [addon["summary"] + ". This optional add-on is for gallery-dl."])
+        for paragraph in paragraphs:
+            ET.SubElement(description, "p").text = paragraph
         ET.SubElement(component, "url", type="homepage").text = addon["homepage"]
         ET.SubElement(ET.SubElement(component, "developer", id="eu.nosini"), "name").text = "nosini"
         metadata = prefix / "share/metainfo" / f"{addon_id}.metainfo.xml"

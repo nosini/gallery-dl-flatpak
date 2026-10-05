@@ -64,9 +64,13 @@
     "suffix": "SecretStorage",
     "slug": "secretstorage",
     "name": "Desktop keyring support",
-    "summary": "Keep site passwords in the desktop keyring and decrypt browser cookies",
-    "license": "BSD-3-Clause",
-    "homepage": "https://github.com/mitya57/secretstorage",
+    "summary": "Decrypt browser cookies, and store site passwords in the keyring (added by this package)",
+    "description": [
+      "This optional add-on for gallery-dl decrypts cookies from Chromium-based browsers using the desktop keyring, with SecretStorage.",
+      "It also lets gallery-dl read site usernames, passwords, API keys and tokens from the desktop keyring. This is an addition of the gallery-dl Flatpak package, not a feature of upstream gallery-dl, so report problems with it to this package rather than to gallery-dl."
+    ],
+    "license": "BSD-3-Clause AND AGPL-3.0-or-later",
+    "homepage": "https://github.com/nosini/gallery-dl-flatpak/blob/main/docs/usage.md#keeping-passwords-in-the-desktop-keyring",
     "requirements": [
       "SecretStorage==3.5.0"
     ],

@@ -17,7 +17,8 @@ extensions, and the executable search path includes yt-dlp, mkvmerge and
 runtime's Python version.
 
 The SecretStorage add-on also lets gallery-dl read site options from the
-desktop keyring, without changes to gallery-dl itself. Its files are in
+desktop keyring. This feature belongs to this package, not to upstream
+gallery-dl, and works without changes to gallery-dl itself. Its files are in
 `flatpak/keyring/`. Python imports `usercustomize` from the add-on's
 site-packages at startup. It adds an import hook that wraps
 `Extractor.config()` once gallery-dl loads `gallery_dl.extractor.common`, so

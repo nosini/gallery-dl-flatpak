@@ -6,7 +6,8 @@ configuration, gallery-dl looks for a Secret Service item with the attributes
 Configured values, including explicit ``null``, take precedence.
 
 This module also provides the ``gallery-dl-keyring`` command for managing
-those items.
+those items. Both are part of the gallery-dl Flatpak package, not of upstream
+gallery-dl.
 """
 
 import argparse
@@ -20,7 +21,8 @@ APPLICATION = "gallery-dl"
 MISSING = object()
 # Unattended downloads shouldn't wait forever for an unlock prompt.
 UNLOCK_TIMEOUT = 120
-log = logging.getLogger("keyring")
+# Marks log lines as coming from this package, not upstream gallery-dl.
+log = logging.getLogger("flatpak-keyring")
 
 
 class SecretServiceStore:
@@ -118,8 +120,8 @@ class _PatchingLoader:
         try:
             patch_extractor(module)
         except Exception as exc:
-            log.warning("Desktop keyring support is unavailable for this gallery-dl "
-                        "version (%s: %s)", exc.__class__.__name__, exc)
+            log.warning("The Flatpak package's keyring support is unavailable for "
+                        "this gallery-dl version (%s: %s)", exc.__class__.__name__, exc)
 
 
 def extractor_spec(name, path, target=None):
@@ -192,6 +194,8 @@ def main(argv=None):
         description="Store gallery-dl site options, such as passwords and API keys, "
                     "in the desktop keyring. gallery-dl uses them when the option "
                     "isn't set in its configuration.",
+        epilog="This command is part of the gallery-dl Flatpak package, "
+               "not of upstream gallery-dl.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
     command = commands.add_parser(

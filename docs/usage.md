@@ -88,7 +88,13 @@ Replace the profile path and browser name with those of your browser.
 
 With the **Desktop keyring support** add-on, gallery-dl can read site
 usernames, passwords, API keys and tokens from your desktop keyring instead of
-its configuration file. Keyring access is opt-in, so allow it for gallery-dl:
+its configuration file.
+
+This feature is added by this Flatpak package; upstream gallery-dl doesn't
+read credentials from the keyring, and its documentation doesn't cover it.
+Report problems with it to this package, not to gallery-dl.
+
+Keyring access is opt-in, so allow it for gallery-dl:
 
 ```sh
 flatpak override --user --talk-name=org.freedesktop.secrets eu.nosini.GalleryDl
@@ -129,8 +135,8 @@ secret-tool store --label='gallery-dl: danbooru api-key' \
 ```
 
 Your keyring might ask to be unlocked when gallery-dl reads a value. Run
-gallery-dl with `-v` to see which options came from the keyring. Values are
-never shown.
+gallery-dl with `-v` to see which options came from the keyring; those log
+lines are marked `[flatpak-keyring]`. Values are never shown.
 
 ## Optional features
 
@@ -144,7 +150,7 @@ features you need under **Add-ons**. Each add-on can be installed independently:
 | SOCKS proxy support | PySocks for SOCKS proxies | [PySocks](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-pysocks.flatpakref) |
 | Brotli compression support | Brotli-compressed web responses | [Brotli](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-brotli.flatpakref) |
 | YAML configuration support | PyYAML for YAML configuration files | [PyYAML](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-pyyaml.flatpakref) |
-| Desktop keyring support | Site passwords in the desktop keyring and decrypting browser cookies | [SecretStorage](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-secretstorage.flatpakref) |
+| Desktop keyring support | Decrypting browser cookies, and [site passwords in the keyring](#keeping-passwords-in-the-desktop-keyring) (added by this package) | [SecretStorage](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-secretstorage.flatpakref) |
 | PostgreSQL archive support | Psycopg for PostgreSQL download archives | [Psycopg](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-psycopg.flatpakref) |
 | System certificate support | truststore for the runtime certificate store | [truststore](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-truststore.flatpakref) |
 | Jinja template support | Jinja templates | [Jinja](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-jinja.flatpakref) |
