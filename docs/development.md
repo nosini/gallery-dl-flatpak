@@ -42,8 +42,8 @@ site-packages at startup. It adds an import hook that wraps
 options missing from the configuration are looked up in the keyring. The add-on
 doesn't use `sitecustomize`, because the runtime's own `sitecustomize` adds
 `/app`'s site-packages and must not be shadowed. The wrapper relies on
-gallery-dl internals. CI checks that it is installed and falls back correctly;
-when updating gallery-dl, also run the keyring test below.
+gallery-dl internals. CI checks that it is installed and falls back correctly
+inside the app, and runs the keyring test below against each gallery-dl version.
 
 Each Python add-on includes its own dependency closure, excluding only the
 packages required by the base app. Overlapping dependencies use the same pinned
@@ -111,7 +111,7 @@ starts its own D-Bus bus and a temporary GNOME Keyring, so it needs
 
 ```sh
 python3.14 -m venv .venv
-.venv/bin/pip install gallery_dl==1.32.15 SecretStorage==3.5.0
+.venv/bin/pip install -r flatpak/requirements.txt SecretStorage==3.5.0
 .venv/bin/python scripts/test-keyring.py
 ```
 
@@ -143,7 +143,8 @@ flatpak install --user --reinstall gallery-dl eu.nosini.GalleryDl
 ## GitHub Actions
 
 `.github/workflows/flatpak.yml` builds on pushes to `main`, pull requests, and
-manual runs. It builds in the Freedesktop 26.08 Flatpak container, installs the
+manual runs. A daily scheduled run builds only when there is a new gallery-dl
+release; see [Updating gallery-dl](#updating-gallery-dl). It builds in the Freedesktop 26.08 Flatpak container, installs the
 result against the Platform runtime, verifies optional packages aren't bundled
 in the base app, and exercises downloads and archives using a local HTTP server.
 It installs each add-on alone, checks imports and functionality, removes it,
@@ -152,7 +153,9 @@ dependencies supplied by the runtime, such as MarkupSafe, are allowed only when
 their module paths resolve under `/usr`; copies under `/app` fail the check.
 It then tests all add-ons together. The checks cover compression round trips, templates,
 cryptography, Psycopg's bundled libpq, and mkvmerge remuxing. They don't connect
-to a live PostgreSQL server or desktop keyring.
+to a live PostgreSQL server or desktop keyring. A separate job runs
+`scripts/test-keyring.py` with the pinned gallery-dl and SecretStorage against a
+temporary GNOME Keyring; publishing waits for it too.
 
 The workflow also checks the exported catalog consumed by software centers for
 all nine add-ons and their relationship to the parent app. Every successful
@@ -195,6 +198,7 @@ key. Flatpak otherwise reuses unchanged unsigned catalog commits from the test
 repository without adding signatures. CI imports the public key into a fresh
 test remote and pulls the signed catalog with GPG verification enabled before
 deployment.
+The deploy job refuses to publish if `main` has moved past the build's commit.
 Signing secrets are used only on `main`, never for pull requests. Each deployment
 contains a fresh repository with the latest build; it does not retain old refs
 for rollback. The Actions bundle is an unsigned build artifact even when Pages
@@ -267,6 +271,49 @@ Keep the public signing identity stable after publishing. Replacing a key
 without arranging client trust in its successor breaks updates for existing
 installations. Flatpak documents signing in its
 [builder guide](https://docs.flatpak.org/en/latest/flatpak-builder.html#signing).
+
+## Updating gallery-dl
+
+The Flatpak workflow checks PyPI's latest stable gallery-dl release each day at
+06:41 UTC. The package installs gallery-dl's wheel from PyPI, so PyPI rather
+than the Codeberg repository decides when a release is available. The check
+ignores prereleases, yanked wheels and versions no newer than the pin in
+`flatpak/requirements.txt`. If there is a new release, it updates the
+requirement, the gallery-dl wheel's URL and SHA-256 in
+`flatpak/python-packages.json`, and the AppStream release entry. No SDK
+download or build runs when there is no update.
+
+The updated files go through the same build, add-on and catalog checks as a
+push, and the keyring test. With `PUBLISH_FLATPAK=true`, a successful build is
+signed and published, then the workflow commits the tested pin and metadata to
+`main`. Failed build or publication checks leave the published package and pin
+unchanged; the next daily run retries. The workflow checks `main` before
+signing an update and again immediately before deployment, using
+`scripts/check-main.sh`. Deployment and recording the pin are separate
+operations: if `main` moves after the final check, the package can be published
+while the recording push is rejected. Without publishing enabled, a successful
+build still records the update and uploads the installable bundles.
+
+The recording job uses the built-in `GITHUB_TOKEN` with `contents: write`; no
+additional secret is needed. Repository rules must allow that bot to push to
+`main`. The bot's push does not trigger another build, since the same workflow
+has already built and, when enabled, published the update.
+
+To check immediately, run the **Flatpak** workflow on `main` with **Check for
+a new upstream stable release** selected. A normal manual run builds the
+current pin. You can also run `python3 scripts/update-upstream.py` locally to
+prepare the changes without committing them.
+
+GitHub disables scheduled workflows in public repositories after 60 days
+without repository activity. Re-enable the workflow in Actions if this happens;
+a manual run can still check upstream immediately.
+
+Updates stop for manual review if gallery-dl's declared dependencies or
+supported Python versions change, including its optional extras. Update it
+manually as described below, and add a `<release>` entry to the metainfo file.
+Run `python3 scripts/test-update-upstream.py` to test release detection, wheel
+selection and refusal of dependency changes with canned PyPI metadata. These
+tests also run before each CI build.
 
 ## Updating dependencies
 
