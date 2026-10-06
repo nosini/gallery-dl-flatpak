@@ -25,6 +25,9 @@
 - `scripts/test-installed.sh`: installs a local build and runs those checks,
   then checks each add-on alone and all of them together.
 - `scripts/prepare-repository.sh`: signs tested builds for publishing.
+- `scripts/update-upstream.sh`: turns the update checker's changes into a
+  pull request, preserving fixes on an open update branch.
+- `scripts/tests/`: tests for the publishing and update scripts.
 - `scripts/bundle-addons.sh`: writes a single-file bundle of each add-on.
 
 An upstream checkout in `upstream/` is ignored by Git. It is handy for
@@ -169,6 +172,32 @@ python3 -c 'import json, sys; [print(s["url"]) for f in sys.argv[1:] for s in js
 .venv/bin/python tests/test-keyring.py
 ```
 
+## Debugging
+
+Open a shell in the last build without installing it:
+
+```sh
+flatpak run org.flatpak.Builder --run build-dir eu.nosini.GalleryDl.yml sh
+```
+
+For a shell in the installed app with the SDK's debugging tools, install the
+SDK and run:
+
+```sh
+flatpak run --devel --command=sh eu.nosini.GalleryDl
+```
+
+To see which D-Bus names the app tries to reach and which `--talk-name`
+permissions it needs:
+
+```sh
+flatpak run --log-session-bus eu.nosini.GalleryDl 2>&1 | grep '(required 1)'
+```
+
+Portal permissions are listed with
+`flatpak permission-show eu.nosini.GalleryDl` and cleared with
+`flatpak permission-reset eu.nosini.GalleryDl`.
+
 ## GitHub Actions
 
 `.github/workflows/flatpak.yml` runs for pushes to `main`, pull requests and
@@ -185,21 +214,44 @@ unsigned and don't update; the published repository does.
 The build is limited to x86_64 by `flathub.json`: mkvmerge comes from an
 x86_64-only AppImage, and the generator pins x86_64 wheels.
 
+`.github/workflows/checks.yml` lints shell scripts and workflows, parses the
+manifest and metadata files, and tests the update script, optional-package
+checks and add-on metadata without building the app. The publishing test
+exports small fake apps and add-ons, publishes them to a local web server,
+and checks history, signatures, static deltas and installers. Run the script
+tests locally with:
+
+```sh
+bash scripts/tests/test-update-upstream.sh
+bash scripts/tests/test-prepare-repository.sh
+```
+
 ### Publishing
 
 On `main`, when the repository variable `PUBLISH_FLATPAK` is `true`, the
 workflow also publishes a signed Flatpak repository to GitHub Pages. A
-separate job, which never runs upstream build code, combines the tested
-builds, signs the app and every add-on ref, generates and signs the software
-catalog and summary, and writes `gallery-dl.flatpakrepo`,
+separate job, which never runs upstream build code, downloads the published
+repository and checks it against the signing key. It adds the tested builds
+as new signed commits, generates static deltas, signs the software catalog
+and summary, and writes `gallery-dl.flatpakrepo`,
 `gallery-dl.flatpakref` and a `gallery-dl-<slug>.flatpakref` for each add-on,
-with the public key embedded. Before deploying, a fresh remote that only
-knows the public key must accept the result, including the catalog's links
-between the app and its add-ons.
+with the public key embedded. The remote and app installers include the
+app's summary and a copy of its icon for software centers; add-on installers
+include their name and description and use the same icon. Before deploying,
+a fresh remote that only knows the public key must accept the result,
+including the catalog's links between the app and its add-ons.
 
-Each deployment contains only the latest build. The repository URL defaults
-to `https://OWNER.github.io/REPOSITORY/`. For a custom domain, set the
-`FLATPAK_REPO_URL` variable to the real URL, including the trailing slash.
+The repository keeps five previous versions of the app and each add-on,
+so users can return to one with `flatpak update --commit`. A build whose
+files didn't change adds no version. Static deltas let Flatpak download
+installs and updates as a few larger files rather than one request per
+file. If the published repository can't be downloaded or doesn't match the
+signing key, the job fails. Set `FLATPAK_KEEP_HISTORY` to `false` to publish
+a new repository without the earlier versions.
+
+The repository URL defaults to `https://OWNER.github.io/REPOSITORY/`. For a
+custom domain, set the `FLATPAK_REPO_URL` variable to the real URL,
+including the trailing slash.
 
 To set publishing up:
 
@@ -271,6 +323,14 @@ To merge updates without review, set the variable `AUTO_MERGE_UPDATES` to
 `true`. The workflow then waits for the build, merges the pull request when
 the build, the installed-app checks and the keyring test pass, and starts
 the publishing build on `main`. A failed build leaves the pull request open.
+
+Changes pushed to `update/upstream` by anyone but the workflow are kept:
+while its pull request is open, later runs add newer releases on top of
+those changes, comment on the pull request and leave it for review even
+with `AUTO_MERGE_UPDATES`. Once the pull request is closed or merged, the
+next update starts from `main` again. If someone pushes while the workflow
+runs, it fails instead of overwriting the branch; the next run picks up
+the changes.
 
 GitHub disables scheduled workflows in public repositories after 60 days
 without activity. Re-enable the workflow under **Actions** if that happens.
