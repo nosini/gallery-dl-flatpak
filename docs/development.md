@@ -1,343 +1,323 @@
-# Building and publishing
+# Development
 
-The packaging lives at the repository root. A local `gallery-dl/` checkout is
-ignored and is not used by the build. The manifest installs release wheels
-from PyPI, pinned by URL and SHA-256 in `flatpak/python-packages.json` and the
-`flatpak/*-packages.json` add-on modules. `flatpak/addons.json` lists the add-ons,
-package requirements, names, and IDs used by the build and publishing scripts.
+## Layout
 
-The manifest exports the application `eu.nosini.GalleryDl` and nine optional
-runtime extensions on branch `stable`. The
+- `eu.nosini.GalleryDl.yml`: the Flatpak manifest.
+- `eu.nosini.GalleryDl.metainfo.xml`, `.desktop` and `.svg`: software-center
+  metadata, launcher and icon.
+- `requirements.txt` and `addons/addons.json`: the Python packages of the app
+  and of each add-on, the input of `scripts/generate-python-deps.py`.
+- `python3-requirements.json` and `addons/python3-<slug>.json`: the pinned
+  Python wheels, generated from those lists.
+- `addons/addons.json` also gives each add-on's ID, name, license and
+  upstream. The catalog, installers, signing and the checks all read it.
+- `addons/keyring/`: the desktop keyring support of the SecretStorage add-on.
+- `addons/install-metadata.py`, `addons/package-mkvmerge.py`: build steps for
+  the add-ons' catalog entries and for mkvmerge.
+- `launcher/`: the `gallery-dl` command and the terminal launcher used by the
+  application menu.
+- `flathub.json`: limits the build to x86_64.
+- `lint-exceptions.json`: linter errors that don't apply to a self-hosted
+  repository, each with its reason.
+- `tests/check-installed.sh`: checks that run inside the installed app; it
+  runs `tests/check-optionals.py`, `tests/smoke-test.py` and
+  `tests/test-launcher.py` there.
+- `scripts/test-installed.sh`: installs a local build and runs those checks,
+  then checks each add-on alone and all of them together.
+- `scripts/prepare-repository.sh`: signs tested builds for publishing.
+- `scripts/bundle-addons.sh`: writes a single-file bundle of each add-on.
+
+An upstream checkout in `upstream/` is ignored by Git. It is handy for
+reading the source.
+
+## How the package works
+
+The manifest installs gallery-dl's release wheel and its dependencies from
+PyPI, pinned by URL and SHA-256. It exports the app `eu.nosini.GalleryDl` and
+nine optional add-ons, each a separate runtime ref. The
 [bundled-extension mechanism](https://docs.flatpak.org/en/latest/extension.html#bundled-extensions)
-builds them together but excludes each extension's files from the application
-ref. `no-autodownload` keeps extensions optional. Their files mount under
-`/app/extensions/<slug>` when installed. Python search paths include the Python
-extensions, and the executable search path includes yt-dlp, mkvmerge and
-`gallery-dl-keyring`. The Python 3.14 path must be updated when changing the
-runtime's Python version.
+builds them together with the app but leaves their files out of the app's
+ref, and `no-autodownload` keeps them optional. Installed add-ons are mounted
+under `/app/extensions/<slug>`. `PYTHONPATH` includes their Python packages,
+and `PATH` includes yt-dlp, mkvmerge and `gallery-dl-keyring`. Both refer to
+Python 3.14 and have to change with the runtime's Python version.
+
+Each Python add-on contains its own dependencies, except those gallery-dl
+itself needs. Shared dependencies are pinned at the same version in every
+add-on, so add-ons work on their own and together. mkvmerge is extracted
+from the official x86_64 AppImage without FUSE; only the program and the
+private libraries it needs are kept, and a wrapper sets its library path. The
+source archive of the same version supplies its license and README. FFmpeg
+comes from the runtime, and TOML and Zstandard support from Python itself.
 
 The `launcher` module replaces pip's `gallery-dl` script with
-`flatpak/launcher/gallery-dl`, which runs through a copy of the runtime's
-Python launcher at `/app/bin/gallery-dl-flatpak`. Programs that identify
-processes by executable can therefore tell gallery-dl apart from other Python
-programs. The copy is only a small wrapper around the runtime's libpython, so it
-keeps working across runtime updates on the same branch. `check-optionals.py`
-checks the executable of a running `gallery-dl`.
+`launcher/gallery-dl`, which runs through a copy of the runtime's Python
+launcher at `/app/bin/gallery-dl-flatpak`. Programs that identify processes
+by their executable can therefore tell gallery-dl apart from other Python
+programs. The copy is only a small wrapper around the runtime's libpython, so
+it keeps working across runtime updates on the same branch.
 
-Before running gallery-dl, the launcher's `gallery_dl_flatpak` module wraps
-`DownloadJob.handle_directory()`. Inside the sandbox, each download folder is
-looked up in `/proc/self/mountinfo`; a folder on the sandbox's temporary root
-filesystem isn't shared with the host, so gallery-dl aborts with the permission
-to grant instead of saving files that would be lost. `test-addons.sh` runs
-`scripts/test-launcher.py` inside the app, which tests this against the
-packaged gallery-dl with simulated mounts, and the smoke test checks it in the
-real sandbox.
+Before gallery-dl starts, `launcher/gallery_dl_flatpak.py` wraps
+`DownloadJob.handle_directory()`. Each download folder is looked up in
+`/proc/self/mountinfo`; a folder on the sandbox's temporary root filesystem
+isn't shared with the host, so gallery-dl stops with the permission to grant
+instead of saving files that would be lost.
 
 The SecretStorage add-on also lets gallery-dl read site options from the
 desktop keyring. This feature belongs to this package, not to upstream
-gallery-dl, and works without changes to gallery-dl itself. Its files are in
-`flatpak/keyring/`. Python imports `usercustomize` from the add-on's
-site-packages at startup. It adds an import hook that wraps
-`Extractor.config()` once gallery-dl loads `gallery_dl.extractor.common`, so
-options missing from the configuration are looked up in the keyring. The add-on
-doesn't use `sitecustomize`, because the runtime's own `sitecustomize` adds
-`/app`'s site-packages and must not be shadowed. The wrapper relies on
-gallery-dl internals. CI checks that it is installed and falls back correctly
-inside the app, and runs the keyring test below against each gallery-dl version.
+gallery-dl, and doesn't change gallery-dl itself. Python imports
+`usercustomize` from the add-on's site-packages at startup. It adds an import
+hook that wraps `Extractor.config()` once gallery-dl loads
+`gallery_dl.extractor.common`, so options missing from the configuration are
+looked up in the keyring. The add-on doesn't use `sitecustomize`, because the
+runtime's own `sitecustomize` adds `/app`'s site-packages and must not be
+shadowed. The wrapper relies on gallery-dl internals, so CI tests it against
+a real Secret Service with every gallery-dl version (see
+[Checking](#checking)).
 
-Each Python add-on includes its own dependency closure, excluding only the
-packages required by the base app. Overlapping dependencies use the same pinned
-versions, so add-ons can work independently and coexist. mkvmerge is extracted
-without FUSE from the pinned upstream x86_64 AppImage. Only its executable and
-required private libraries are packaged; the wrapper sets its library path for
-that process. The pinned source archive supplies the tool's license and README.
-FFmpeg comes from the runtime. TOML and Zstandard support come from Python;
-the pinned urllib3 uses the standard-library Zstandard decoder.
+GNOME Software hides AppStream console applications, so the app is described
+as a desktop application with a terminal launcher. The launcher shows
+gallery-dl's help and waits for Enter before closing. The metadata module
+writes each add-on's metainfo and a compressed catalog entry with Python,
+since `appstreamcli` isn't available inside the SDK. Each entry `extends` the
+app's ID; Flatpak adds the add-on's ref when it merges the entries into the
+repository's catalog, and software centers then list the add-ons on the
+app's page.
 
-The application has a terminal desktop launcher and icon so it can appear in
-GNOME Software, which filters out AppStream console applications. The launcher
-shows gallery-dl's CLI help and waits before closing. Each add-on's AppStream
-`extends` field links it to the main app's ID. All catalog entries and Flatpak
-bundle refs must be present in the repository's exported AppStream catalog for
-software centers to offer the add-ons under the parent app.
+## Building
 
-The metadata module writes each add-on's metainfo and a compressed AppStream
-catalog using Python. These text-only entries don't need icon or desktop-file
-processing. Catalog generation runs inside the SDK sandbox without calling
-`appstreamcli`, which is a builder-host tool. Flatpak adds each extension's
-bundle ref when merging the catalogs into the repository. The main app's
-desktop metadata is still composed by flatpak-builder on the build host.
-
-To check add-on catalog generation and real repository exports without installing
-the SDK, run `python3 scripts/test-addon-metadata.py`. This needs Python, Flatpak,
-and the OSTree CLI. It also checks that generation works without external tools
-in its search path and produces reproducible compressed catalogs.
-
-## Local build
-
-Install Flatpak and flatpak-builder through your distribution. Then, on x86_64:
+The simplest way to build is with `org.flatpak.Builder` from Flathub. It
+contains flatpak-builder and the linter in the versions Flathub uses:
 
 ```sh
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak-builder --user --install-deps-from=flathub --force-clean \
-  --repo=repo --install build-dir flatpak/eu.nosini.GalleryDl.yml
-flatpak run eu.nosini.GalleryDl --version
-flatpak run --filesystem="$PWD/scripts:ro" --command=python3 \
-  eu.nosini.GalleryDl "$PWD/scripts/smoke-test.py"
+flatpak install --user flathub org.flatpak.Builder
+flatpak run org.flatpak.Builder --user --install --install-deps-from=flathub \
+  --default-branch=stable --force-clean --repo=repo build-dir eu.nosini.GalleryDl.yml
 ```
 
-To test the base app and every add-on independently and together:
+The build downloads the pinned sources, so it needs a network connection.
+Building from a checkout installs the app from a local remote named
+`eu.nosini.GalleryDl-origin`. Once the build directories are gone,
+`flatpak update` warns that it can't reach it. Switch to the published
+remote as the README describes, or disable it with
+`flatpak remote-modify --user --disable eu.nosini.GalleryDl-origin`.
+
+To get single-file bundles of the app and the add-ons instead of installing:
 
 ```sh
-flatpak --user remote-add --if-not-exists --no-gpg-verify local-test "$PWD/repo"
-bash scripts/test-addons.sh
+flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+  repo gallery-dl.flatpak eu.nosini.GalleryDl stable
+bash scripts/bundle-addons.sh
 ```
 
-The tests require a fresh installation with no add-ons already installed. They
-install and remove each add-on, then leave all add-ons installed after the final
-combined check. The repository catalog can also be checked after refreshing it:
+A bundle or local installation can later be moved to the published
+repository: install its `.flatpakref` to add the `gallery-dl` remote, then
+run `flatpak install --user --reinstall gallery-dl eu.nosini.GalleryDl`.
+
+## Checking
+
+CI runs the same linter checks as Flathub. Run them locally with:
 
 ```sh
-flatpak build-update-repo repo
-flatpak --user update --appstream local-test
-python3 scripts/check-appstream.py \
-  "${XDG_DATA_HOME:-$HOME/.local/share}/flatpak/appstream/local-test/x86_64/active"
+alias lint='flatpak run --command=flatpak-builder-lint org.flatpak.Builder'
+lint --exceptions --user-exceptions lint-exceptions.json manifest eu.nosini.GalleryDl.yml
+lint appstream eu.nosini.GalleryDl.metainfo.xml
+lint --exceptions --user-exceptions lint-exceptions.json repo repo
 ```
 
-To test the keyring add-on against a real Secret Service, use a Python 3.14
-environment with the pinned gallery-dl and SecretStorage packages. The test
-starts its own D-Bus bus and a temporary GNOME Keyring, so it needs
-`dbus-daemon` and `gnome-keyring-daemon` but doesn't touch your keyring:
+Only add an exception when the rule doesn't apply to a package published
+outside Flathub, and say why in `lint-exceptions.json`.
+
+To run the checks inside the installed app, build without `--install` (but
+with `--repo=repo`), then run:
+
+```sh
+bash scripts/test-installed.sh
+```
+
+The script adds a `local-test` remote for `repo/`, installs the app from it
+and runs `tests/check-installed.sh` with `flatpak run`, so the checks see the
+Platform runtime the app runs with, not the SDK. They check that gallery-dl
+reports the version of the newest metainfo release, that the requirements of
+every bundled package are installed, and that no add-on's packages are in
+the app. Python packages that the Platform itself provides, such as
+MarkupSafe, are allowed. The smoke test downloads from a local HTTP server,
+checks the download archive and checks that unshared folders are refused.
+The script then installs each add-on alone, exercises it, removes it and
+checks the app again, and finally checks all add-ons together. It refuses
+to replace an existing installation. Afterwards, remove the test installation
+with `flatpak --user uninstall eu.nosini.GalleryDl` and its add-ons, and the
+remote with `flatpak --user remote-delete local-test`.
+
+Some tests run without a Flatpak build. `tests/test-launcher.py` tests the
+download folder check against gallery-dl with simulated mounts, and needs a
+Python 3.14 with the pinned gallery-dl. `tests/test-addon-metadata.py`
+generates the add-on catalog entries and exports them into a repository; it
+needs Flatpak and the OSTree CLI. `tests/test-optionals-check.py` tests the
+check for packages leaking into the app.
+
+`tests/test-keyring.py` tests the keyring support against a real Secret
+Service. It starts its own D-Bus bus and a temporary GNOME Keyring, so it
+needs `dbus-daemon` and `gnome-keyring-daemon` but doesn't touch your
+keyring. Install the pinned wheels into a Python 3.14 environment first:
 
 ```sh
 python3.14 -m venv .venv
-.venv/bin/pip install -r flatpak/requirements.txt SecretStorage==3.5.0
-.venv/bin/python scripts/test-keyring.py
-```
-
-The manifest uses Freedesktop 26.08 and Python 3.14. Builds need network access
-to fetch the runtime and the pinned sources; pip installation itself is offline.
-The native wheels target x86_64. Adding another architecture requires generating
-matching wheels and extending the workflow.
-
-To produce portable installers for the app and every optional add-on:
-
-```sh
-bash scripts/create-bundles.sh
-```
-
-Local `--install` builds use a temporary build repository as their update origin.
-Once that repository is removed, disable its remote to avoid update errors:
-
-```sh
-flatpak remote-modify --user --disable "$(flatpak info --user --show-origin eu.nosini.GalleryDl)"
-```
-
-To switch an existing bundle or local installation to a published repository,
-first install its `.flatpakref` to add the remote, then explicitly switch origins:
-
-```sh
-flatpak install --user --reinstall gallery-dl eu.nosini.GalleryDl
+python3 -c 'import json, sys; [print(s["url"]) for f in sys.argv[1:] for s in json.load(open(f))["sources"]]' \
+  python3-requirements.json addons/python3-secretstorage.json > .venv/wheels.txt
+.venv/bin/pip install --no-deps -r .venv/wheels.txt
+.venv/bin/python tests/test-keyring.py
 ```
 
 ## GitHub Actions
 
-`.github/workflows/flatpak.yml` builds on pushes to `main`, pull requests, and
-manual runs. A daily scheduled run builds only when there is a new gallery-dl
-release; see [Updating gallery-dl](#updating-gallery-dl). It builds in the Freedesktop 26.08 Flatpak container, installs the
-result against the Platform runtime, verifies optional packages aren't bundled
-in the base app, and exercises downloads and archives using a local HTTP server.
-It installs each add-on alone, checks imports and functionality, removes it,
-and checks that the base app is free of bundled optional packages again. Python
-dependencies supplied by the runtime, such as MarkupSafe, are allowed only when
-their module paths resolve under `/usr`; copies under `/app` fail the check.
-It then tests all add-ons together. The checks cover compression round trips, templates,
-cryptography, Psycopg's bundled libpq, and mkvmerge remuxing. They don't connect
-to a live PostgreSQL server or desktop keyring. A separate job runs
-`scripts/test-keyring.py` with the pinned gallery-dl and SecretStorage against a
-temporary GNOME Keyring; publishing waits for it too.
+`.github/workflows/flatpak.yml` runs for pushes to `main`, pull requests and
+manual runs. It lints the manifest and metainfo, builds with
+[flatpak-github-actions](https://github.com/flatpak/flatpak-github-actions),
+lints the exported build and runs `scripts/test-installed.sh`. It checks that
+the exported software catalog links all add-ons to the app, and uploads an
+installable bundle of the app and one of the add-ons as artifacts. A
+separate job runs `tests/test-keyring.py` with the pinned wheels. Install a
+downloaded artifact with `flatpak install --user gallery-dl-x86_64.flatpak`
+and, for add-ons, for example `gallery-dl-yt-dlp-x86_64.flatpak`. Bundles are
+unsigned and don't update; the published repository does.
 
-The workflow also checks the exported catalog consumed by software centers for
-all nine add-ons and their relationship to the parent app. Every successful
-build uploads a `gallery-dl-x86_64` artifact for the app and a
-`gallery-dl-addons-x86_64` artifact containing separate add-on bundles.
-Builds and pull requests need no secrets.
+The build is limited to x86_64 by `flathub.json`: mkvmerge comes from an
+x86_64-only AppImage, and the generator pins x86_64 wheels.
 
-To try a CI build, download the `gallery-dl-x86_64` artifact from a successful
-**Flatpak** run in the repository's GitHub Actions tab. For optional features,
-also download `gallery-dl-addons-x86_64`. Extract the archives, then install
-the app and whichever add-on bundles you need; for example:
+### Publishing
 
-```sh
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user ./gallery-dl-x86_64.flatpak
-flatpak install --user ./gallery-dl-yt-dlp-x86_64.flatpak
-```
+On `main`, when the repository variable `PUBLISH_FLATPAK` is `true`, the
+workflow also publishes a signed Flatpak repository to GitHub Pages. A
+separate job, which never runs upstream build code, combines the tested
+builds, signs the app and every add-on ref, generates and signs the software
+catalog and summary, and writes `gallery-dl.flatpakrepo`,
+`gallery-dl.flatpakref` and a `gallery-dl-<slug>.flatpakref` for each add-on,
+with the public key embedded. Before deploying, a fresh remote that only
+knows the public key must accept the result, including the catalog's links
+between the app and its add-ons.
 
-These bundles are unsigned and need to be downloaded and installed again for
-each update. The signed repository described below supports `flatpak update`.
+Each deployment contains only the latest build. The repository URL defaults
+to `https://OWNER.github.io/REPOSITORY/`. For a custom domain, set the
+`FLATPAK_REPO_URL` variable to the real URL, including the trailing slash.
 
-Signed publishing is optional:
+To set publishing up:
 
 1. In **Settings → Pages**, select **GitHub Actions** as the source.
-2. Add the repository Actions secret `FLATPAK_GPG_PRIVATE_KEY`, containing an
-   ASCII-armored private signing key with no passphrase.
-3. Add the repository Actions variable `PUBLISH_FLATPAK` with the value `true`.
-4. Push to `main` or manually run the workflow on `main`.
+2. Store the signing key as the secret `FLATPAK_GPG_PRIVATE_KEY` (see
+   below).
+3. Set the variable:
+   `gh variable set PUBLISH_FLATPAK --body true --repo nosini/gallery-dl-flatpak`.
+4. Run the workflow on `main`, or push to it.
 
-The workflow copies the exported repository and signs the tested app ref, every
-add-on ref, and its summary. Signing the exported app ref preserves the exclusion
-of extension files; exporting the build directory again without those exclusions
-would put optional packages back into the app. It exports the public key into
-`.flatpakrepo` and `.flatpakref`
-files and deploys to GitHub Pages. Each `gallery-dl-<slug>.flatpakref` installs an
-extension separately, using the same repository and signing key as the app.
-Before signing the repository summary, publishing resets the `appstream` and
-`appstream2` refs in the copied repository and regenerates them with the signing
-key. Flatpak otherwise reuses unchanged unsigned catalog commits from the test
-repository without adding signatures. CI imports the public key into a fresh
-test remote and pulls the signed catalog with GPG verification enabled before
-deployment.
-The deploy job refuses to publish if `main` has moved past the build's commit.
-Signing secrets are used only on `main`, never for pull requests. Each deployment
-contains a fresh repository with the latest build; it does not retain old refs
-for rollback. The Actions bundle is an unsigned build artifact even when Pages
-publishing is enabled.
+### Signing key
 
-The default public URL is `https://OWNER.github.io/REPOSITORY/`. For a custom
-domain or an account-level Pages repository, set `FLATPAK_REPO_URL` to the actual
-URL, including its trailing slash. This setting changes repository metadata;
-configure the corresponding domain separately in GitHub Pages.
-
-## Signing keys
-
-Flatpak signing keys authenticate repository commits and summaries. A key can
-sign multiple apps and repositories; it does not have to match the application
-ID. Reusing an existing publisher key is valid. Separate keys are preferable
-when separate repositories have independent CI secrets: compromise or rotation
-of one key then affects only its repository.
-
-Generate keys on your own machine, outside the source checkout. For a dedicated
-unattended CI key, use a separate GnuPG directory:
+The key has to be an ASCII-armored GnuPG private key without a passphrase.
+An existing Flatpak signing key can be reused. To make a new one, generate
+it on your own machine, outside the source checkout, in a separate GnuPG
+directory:
 
 ```sh
-mkdir -p -m 700 "$HOME/.gnupg-gallery-dl/private-keys-v1.d"
-gpgconf --homedir "$HOME/.gnupg-gallery-dl" --create-socketdir
-gpg --homedir "$HOME/.gnupg-gallery-dl" --batch --pinentry-mode loopback \
-  --passphrase '' --quick-generate-key 'gallery-dl Flatpak signing' ed25519 sign 0
-gpg --homedir "$HOME/.gnupg-gallery-dl" --list-secret-keys --keyid-format long
+mkdir -p -m 700 "$HOME/.gnupg-flatpak/private-keys-v1.d"
+gpgconf --homedir "$HOME/.gnupg-flatpak" --create-socketdir
+gpg --homedir "$HOME/.gnupg-flatpak" --batch --pinentry-mode loopback \
+  --passphrase '' --quick-generate-key 'Nosini Flatpak signing' ed25519 sign 0
 ```
 
-If generation reports `agent_genkey failed: No such file or directory`, ensure
-the private-key directory above exists, then restart the dedicated agent and
-retry generation:
-
-```sh
-gpgconf --homedir "$HOME/.gnupg-gallery-dl" --kill gpg-agent
-gpgconf --homedir "$HOME/.gnupg-gallery-dl" --launch gpg-agent
-```
-
-If it still fails, inspect the agent's diagnostic output before proceeding.
-Do not upload a secret until key generation succeeds.
-
-Replace `OWNER` and `REPOSITORY` below. With GitHub CLI authenticated on that
-machine, export the key to a private temporary file and upload only after the
-export succeeds and produces data:
+Upload it through a private temporary file, so a failed export can't upload
+an empty secret:
 
 ```sh
 (
   set -eu
   umask 077
-  key_file=$(mktemp "$HOME/.gnupg-gallery-dl/export.XXXXXX")
+  key_file=$(mktemp "$HOME/.gnupg-flatpak/export.XXXXXX")
   trap 'rm -f "$key_file"' EXIT
-  gpg --homedir "$HOME/.gnupg-gallery-dl" --armor \
-    --export-secret-keys 'gallery-dl Flatpak signing' > "$key_file"
+  gpg --homedir "$HOME/.gnupg-flatpak" --armor \
+    --export-secret-keys 'Nosini Flatpak signing' > "$key_file"
   test -s "$key_file"
-  gh secret set FLATPAK_GPG_PRIVATE_KEY --repo OWNER/REPOSITORY < "$key_file"
+  gh secret set FLATPAK_GPG_PRIVATE_KEY --repo nosini/gallery-dl-flatpak < "$key_file"
 )
 ```
 
-After the upload succeeds, enable publishing:
+Keep a backup of the key. Installed copies trust the public key from the
+`.flatpakref` they were installed with, so replacing the key breaks their
+updates.
 
-```sh
-gh variable set PUBLISH_FLATPAK --body true --repo OWNER/REPOSITORY
-```
+### Shared remote
 
-Keep a secure backup of the key and its revocation certificate. To reuse a
-compatible existing CI signing key, export it from its existing GnuPG directory
-instead. This workflow does not unlock passphrase-protected keys.
+[flatpak-repo](https://github.com/nosini/flatpak-repo) collects the
+published packages into the shared `nosini` remote. Its `apps.json` lists
+gallery-dl with all nine add-ons; add new add-ons there too.
 
-Keep the public signing identity stable after publishing. Replacing a key
-without arranging client trust in its successor breaks updates for existing
-installations. Flatpak documents signing in its
-[builder guide](https://docs.flatpak.org/en/latest/flatpak-builder.html#signing).
+## Updating
 
-## Updating gallery-dl
+`.github/workflows/update.yml` runs
+[flatpak-external-data-checker](https://github.com/flathub-infra/flatpak-external-data-checker)
+every Monday at 05:17 UTC, and on manual runs. It follows the
+`x-checker-data` of the sources: every pure-Python wheel through PyPI, with
+gallery-dl as the main source, and the mkvmerge AppImage and source archive
+through the download pages. Wheels with native code have no checker; they
+are updated by regenerating the Python modules (below). If anything is
+newer, the workflow updates the pins, adds a release to the metainfo file
+when gallery-dl changed, pushes the change to the `update/upstream` branch,
+opens a pull request and starts the Flatpak build of that branch. Its result
+shows on the pull request. Merging the pull request publishes the update.
 
-The Flatpak workflow checks PyPI's latest stable gallery-dl release each day at
-06:41 UTC. The package installs gallery-dl's wheel from PyPI, so PyPI rather
-than the Codeberg repository decides when a release is available. The check
-ignores prereleases, yanked wheels and versions no newer than the pin in
-`flatpak/requirements.txt`. If there is a new release, it updates the
-requirement, the gallery-dl wheel's URL and SHA-256 in
-`flatpak/python-packages.json`, and the AppStream release entry. No SDK
-download or build runs when there is no update.
+The workflow needs **Allow GitHub Actions to create and approve pull
+requests** under **Settings → Actions → General**.
 
-The updated files go through the same build, add-on and catalog checks as a
-push, and the keyring test. With `PUBLISH_FLATPAK=true`, a successful build is
-signed and published, then the workflow commits the tested pin and metadata to
-`main`. Failed build or publication checks leave the published package and pin
-unchanged; the next daily run retries. The workflow checks `main` before
-signing an update and again immediately before deployment, using
-`scripts/check-main.sh`. Deployment and recording the pin are separate
-operations: if `main` moves after the final check, the package can be published
-while the recording push is rejected. Without publishing enabled, a successful
-build still records the update and uploads the installable bundles.
-
-The recording job uses the built-in `GITHUB_TOKEN` with `contents: write`; no
-additional secret is needed. Repository rules must allow that bot to push to
-`main`. The bot's push does not trigger another build, since the same workflow
-has already built and, when enabled, published the update.
-
-To check immediately, run the **Flatpak** workflow on `main` with **Check for
-a new upstream stable release** selected. A normal manual run builds the
-current pin. You can also run `python3 scripts/update-upstream.py` locally to
-prepare the changes without committing them.
+To merge updates without review, set the variable `AUTO_MERGE_UPDATES` to
+`true`. The workflow then waits for the build, merges the pull request when
+the build, the installed-app checks and the keyring test pass, and starts
+the publishing build on `main`. A failed build leaves the pull request open.
 
 GitHub disables scheduled workflows in public repositories after 60 days
-without repository activity. Re-enable the workflow in Actions if this happens;
-a manual run can still check upstream immediately.
+without activity. Re-enable the workflow under **Actions** if that happens.
 
-Updates stop for manual review if gallery-dl's declared dependencies or
-supported Python versions change, including its optional extras. Update it
-manually as described below, and add a `<release>` entry to the metainfo file.
-Run `python3 scripts/test-update-upstream.py` to test release detection, wheel
-selection and refusal of dependency changes with canned PyPI metadata. These
-tests also run before each CI build.
+The checker updates each wheel on its own. If a new release needs a package
+or version that isn't bundled, the installed-app checks fail on the pull
+request. Then regenerate the Python modules on the update branch. Add a
+description to the new metainfo release when it is worth more than the
+version number.
 
-## Updating dependencies
+## Python dependencies
 
-Change the gallery-dl version in `flatpak/requirements.txt` or an optional
-package's requirements in `flatpak/addons.json`, then resolve dependencies with
-Python 3.14 and pip:
+`requirements.txt` lists gallery-dl, and `addons/addons.json` the packages of
+each add-on, without versions; the generated modules hold the pins. After
+changing either, or to update every package including those with native
+code, regenerate the modules with Python 3.14, the runtime's version:
 
 ```sh
 python3.14 -m venv .venv
-.venv/bin/python flatpak/generate-python-deps.py
+.venv/bin/python scripts/generate-python-deps.py
 ```
 
-The generator resolves the base app first, then all optional requirements with
-those base versions constrained. It resolves each add-on against the combined
-versions and omits only base packages. Review and commit the requirements and
-all generated modules, and run the Flatpak workflow. Regeneration updates
-transitive dependencies too. Ordinary builds never resolve new versions.
+The script resolves the newest versions with pip for Python 3.14 on x86_64,
+using wheels only. It resolves gallery-dl first, then everything together
+with gallery-dl's versions fixed, then each add-on against those versions,
+leaving out what gallery-dl already brings. It gives every pure-Python wheel
+`x-checker-data`. If gallery-dl's version changes, add a release to the
+metainfo file, or the installed-app checks fail.
 
-When adding a new feature, also declare its bundled extension and search path
-in `flatpak/eu.nosini.GalleryDl.yml`, add its module to the manifest, and add a
-functional check in `scripts/check-optionals.py`. Catalog generation, installer
-links, signing, and bundle creation read the central add-on list.
+This package doesn't use flatpak-pip-generator: the generator always
+installs into `/app`, while the add-ons need their own prefix, and it can't
+keep shared dependencies at the same version across add-ons. The script
+installs prebuilt wheels for every package, also for those with native code,
+which would otherwise need Rust or C toolchains to build.
 
-To update mkvmerge, change the AppImage and source archive versions and hashes
-in `flatpak/mkvmerge.json`. Verify the extracted binary's library closure and
-run the runtime checks; upstream AppImages may change their platform library
-requirements.
+To add an add-on, add it to `addons/addons.json`, and in the manifest
+declare its extension, include its module and add its directories to
+`PYTHONPATH` or `PATH`. Then give it a functional check in
+`tests/check-optionals.py`. The catalog, installers, signing and bundles
+follow the list.
+
+## Moving to a newer runtime
+
+Change `runtime-version` in the manifest and the image tag in
+`.github/workflows/flatpak.yml` (`freedesktop-26.08`). If the new runtime
+has a different Python version, change the `python3.14` paths in the
+manifest and in `tests/check-installed.sh`, and the version in
+`scripts/generate-python-deps.py`, then regenerate the Python modules.
+mkvmerge's library list in `addons/package-mkvmerge.py` assumes what the
+Freedesktop runtime provides; check it against the new runtime.

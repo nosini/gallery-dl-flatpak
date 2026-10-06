@@ -1,9 +1,12 @@
-/gallery-dl/
-/.venv/
+# flatpak-builder output
 /.flatpak-builder/
 /build-dir/
 /repo/
 /signed-repo/
 *.flatpak
+# Generator virtual environments
+/.cache/
+/.venv/
+# An upstream checkout for reading the source and making patches
+/upstream/
 __pycache__/
-*.pyc

@@ -1,0 +1,175 @@
+[
+  {
+    "suffix": "YtDlp",
+    "slug": "yt-dlp",
+    "name": "yt-dlp support for gallery-dl",
+    "summary": "Download HLS and DASH videos with yt-dlp",
+    "license": "Unlicense",
+    "homepage": "https://github.com/yt-dlp/yt-dlp",
+    "developer": {
+      "id": "io.github.yt_dlp",
+      "name": "yt-dlp"
+    },
+    "requirements": [
+      "yt-dlp[default]"
+    ],
+    "imports": [
+      "yt_dlp",
+      "yt_dlp_ejs",
+      "brotli",
+      "mutagen",
+      "Cryptodome",
+      "websockets"
+    ]
+  },
+  {
+    "suffix": "PySocks",
+    "slug": "pysocks",
+    "name": "SOCKS proxy support",
+    "summary": "Connect through SOCKS proxies with PySocks",
+    "license": "BSD-3-Clause",
+    "homepage": "https://github.com/Anorov/PySocks",
+    "developer": {
+      "id": "io.github.anorov",
+      "name": "Anorov"
+    },
+    "requirements": [
+      "PySocks"
+    ],
+    "imports": [
+      "socks"
+    ]
+  },
+  {
+    "suffix": "Brotli",
+    "slug": "brotli",
+    "name": "Brotli compression support",
+    "summary": "Decode Brotli-compressed web responses",
+    "license": "MIT",
+    "homepage": "https://github.com/google/brotli",
+    "developer": {
+      "id": "com.google",
+      "name": "Google"
+    },
+    "requirements": [
+      "brotli"
+    ],
+    "imports": [
+      "brotli"
+    ]
+  },
+  {
+    "suffix": "PyYAML",
+    "slug": "pyyaml",
+    "name": "YAML configuration support",
+    "summary": "Read gallery-dl configuration in YAML format",
+    "license": "MIT",
+    "homepage": "https://pyyaml.org/",
+    "developer": {
+      "id": "org.pyyaml",
+      "name": "PyYAML"
+    },
+    "requirements": [
+      "PyYAML"
+    ],
+    "imports": [
+      "yaml"
+    ]
+  },
+  {
+    "suffix": "SecretStorage",
+    "slug": "secretstorage",
+    "name": "Desktop keyring support",
+    "summary": "Decrypt browser cookies, and store site passwords in the keyring (added by this package)",
+    "description": [
+      "This optional add-on for gallery-dl decrypts cookies from Chromium-based browsers using the desktop keyring, with SecretStorage.",
+      "It also lets gallery-dl read site usernames, passwords, API keys and tokens from the desktop keyring. This is an addition of the gallery-dl Flatpak package, not a feature of upstream gallery-dl, so report problems with it to this package rather than to gallery-dl."
+    ],
+    "license": "BSD-3-Clause AND AGPL-3.0-or-later",
+    "homepage": "https://github.com/nosini/gallery-dl-flatpak/blob/main/docs/usage.md#keeping-passwords-in-the-desktop-keyring",
+    "developer": {
+      "id": "io.github.mitya57",
+      "name": "Dmitry Shachnev"
+    },
+    "requirements": [
+      "SecretStorage"
+    ],
+    "imports": [
+      "secretstorage",
+      "jeepney",
+      "cryptography",
+      "gallery_dl_keyring",
+      "usercustomize"
+    ]
+  },
+  {
+    "suffix": "Psycopg",
+    "slug": "psycopg",
+    "name": "PostgreSQL archive support",
+    "summary": "Store download archives in PostgreSQL using Psycopg",
+    "license": "LGPL-3.0-only",
+    "homepage": "https://www.psycopg.org/",
+    "developer": {
+      "id": "org.psycopg",
+      "name": "The Psycopg Team"
+    },
+    "requirements": [
+      "psycopg[binary]"
+    ],
+    "imports": [
+      "psycopg",
+      "psycopg_binary"
+    ]
+  },
+  {
+    "suffix": "Truststore",
+    "slug": "truststore",
+    "name": "System certificate support",
+    "summary": "Use the runtime system certificate store for HTTPS",
+    "license": "MIT",
+    "homepage": "https://github.com/sethmlarson/truststore",
+    "developer": {
+      "id": "io.github.sethmlarson",
+      "name": "Seth Michael Larson"
+    },
+    "requirements": [
+      "truststore"
+    ],
+    "imports": [
+      "truststore"
+    ]
+  },
+  {
+    "suffix": "Jinja",
+    "slug": "jinja",
+    "name": "Jinja template support",
+    "summary": "Render gallery-dl templates with Jinja",
+    "license": "BSD-3-Clause",
+    "homepage": "https://jinja.palletsprojects.com/",
+    "developer": {
+      "id": "com.palletsprojects",
+      "name": "Pallets"
+    },
+    "requirements": [
+      "Jinja2"
+    ],
+    "imports": [
+      "jinja2",
+      "markupsafe"
+    ]
+  },
+  {
+    "suffix": "MkvMerge",
+    "slug": "mkvmerge",
+    "name": "Accurate Ugoira timecodes",
+    "summary": "Create Matroska files with accurate Ugoira frame timing using mkvmerge",
+    "license": "GPL-2.0-only",
+    "homepage": "https://mkvtoolnix.download/",
+    "developer": {
+      "id": "download.mkvtoolnix",
+      "name": "Moritz Bunkus"
+    },
+    "requirements": [],
+    "imports": []
+  }
+]

@@ -1,0 +1,4 @@
+# gallery-dl's runtime dependencies, the input of scripts/generate-python-deps.py.
+# The versions are pinned in python3-requirements.json, where the update
+# workflow follows new releases.
+gallery-dl

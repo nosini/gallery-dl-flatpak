@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>eu.nosini.GalleryDl</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-only</project_license>
+  <name>gallery-dl</name>
+  <summary>Download image galleries and collections from the command line</summary>
+  <developer id="org.codeberg.mikf">
+    <name>Mike Fährmann</name>
+  </developer>
+  <description>
+    <p>
+      gallery-dl downloads image galleries and collections from several
+      hundred image hosting sites. It runs in a terminal and supports custom
+      file names, download archives, logins and filters.
+    </p>
+    <p>
+      Optional add-ons provide video downloads with yt-dlp, SOCKS proxies,
+      Brotli-compressed responses, YAML configuration, the desktop keyring,
+      PostgreSQL archives, system certificates, Jinja templates and accurate
+      Ugoira timing with mkvmerge.
+    </p>
+    <p>
+      This is an unofficial Flatpak build of the upstream project.
+    </p>
+  </description>
+  <launchable type="desktop-id">eu.nosini.GalleryDl.desktop</launchable>
+  <url type="homepage">https://codeberg.org/mikf/gallery-dl</url>
+  <url type="bugtracker">https://codeberg.org/mikf/gallery-dl/issues</url>
+  <url type="vcs-browser">https://codeberg.org/mikf/gallery-dl</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The command-line options</caption>
+      <image>https://raw.githubusercontent.com/nosini/gallery-dl-flatpak/main/docs/screenshots/help.png</image>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#f3e1ad</color>
+    <color type="primary" scheme_preference="dark">#5a4513</color>
+  </branding>
+  <provides>
+    <binary>gallery-dl</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.32.15" date="2026-10-03">
+      <description>
+        <p>
+          New extractors for Steam Community screenshots and artworks and for
+          Pornhub avatars and banners, two more Mastodon instances, and fixes
+          for several sites.
+        </p>
+      </description>
+    </release>
+  </releases>
+</component>
