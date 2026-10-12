@@ -200,8 +200,10 @@ Portal permissions are listed with
 
 ## GitHub Actions
 
-`.github/workflows/flatpak.yml` runs for pushes to `main`, pull requests and
-manual runs. It lints the manifest and metainfo, builds with
+`.github/workflows/flatpak.yml` runs when a GitHub release is published,
+for pull requests and on manual runs. Pushes to `main` run the packaging
+checks without building the app. Release builds use the tagged commit.
+The workflow lints the manifest and metainfo, builds with
 [flatpak-github-actions](https://github.com/flatpak/flatpak-github-actions),
 lints the exported build and runs `scripts/test-installed.sh`. It checks that
 the exported software catalog links all add-ons to the app, and uploads an
@@ -228,8 +230,11 @@ bash scripts/tests/test-prepare-repository.sh
 
 ### Publishing
 
-On `main`, when the repository variable `PUBLISH_FLATPAK` is `true`, the
-workflow also publishes a signed Flatpak repository to GitHub Pages. A
+When the repository variable `PUBLISH_FLATPAK` is `true`, publishing a
+stable GitHub release builds and publishes a signed Flatpak repository to
+GitHub Pages. A manual Flatpak run on `main` also publishes, so packaging
+fixes can be shipped without a new upstream release. Pull request builds
+and prerelease builds produce bundle artifacts. A
 separate job, which never runs upstream build code, downloads the published
 repository and checks it against the signing key. It adds the tested builds
 as new signed commits, generates static deltas, signs the software catalog
@@ -260,7 +265,8 @@ To set publishing up:
    below).
 3. Set the variable:
    `gh variable set PUBLISH_FLATPAK --body true --repo nosini/gallery-dl-flatpak`.
-4. Run the workflow on `main`, or push to it.
+4. Publish a GitHub release with a tag pointing to the commit to build,
+   or run the Flatpak workflow manually on `main`.
 
 ### Signing key
 
@@ -314,7 +320,8 @@ are updated by regenerating the Python modules (below). If anything is
 newer, the workflow updates the pins, adds a release to the metainfo file
 when gallery-dl changed, pushes the change to the `update/upstream` branch,
 opens a pull request and starts the Flatpak build of that branch. Its result
-shows on the pull request. Merging the pull request publishes the update.
+shows on the pull request. After merging, publish a GitHub release at the
+merged commit to build and publish the update.
 
 The workflow needs **Allow GitHub Actions to create and approve pull
 requests** under **Settings → Actions → General**.
@@ -323,9 +330,10 @@ setting and start a new **Update** run from `main`. The workflow reuses
 the pending commit, creates its pull request and starts its build.
 
 To merge updates without review, set the variable `AUTO_MERGE_UPDATES` to
-`true`. The workflow then waits for the build, merges the pull request when
-the build, the installed-app checks and the keyring test pass, and starts
-the publishing build on `main`. A failed build leaves the pull request open.
+`true`. The workflow then waits for the build and merges the pull request
+when the build, the installed-app checks and the keyring test pass. Publish
+a GitHub release afterwards to ship it. A failed build leaves the pull
+request open.
 
 Changes pushed to `update/upstream` by anyone but the workflow are kept:
 while its pull request is open, later runs add newer releases on top of
