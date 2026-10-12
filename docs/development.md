@@ -200,7 +200,7 @@ Portal permissions are listed with
 
 ## GitHub Actions
 
-`.github/workflows/flatpak.yml` runs when a GitHub release is published,
+`.github/workflows/flatpak.yml` runs when a `v*` version tag is pushed,
 for pull requests and on manual runs. Pushes to `main` run the packaging
 checks without building the app. Release builds use the tagged commit.
 The workflow lints the manifest and metainfo, builds with
@@ -230,11 +230,15 @@ bash scripts/tests/test-prepare-repository.sh
 
 ### Publishing
 
-When the repository variable `PUBLISH_FLATPAK` is `true`, publishing a
-stable GitHub release builds and publishes a signed Flatpak repository to
+When the repository variable `PUBLISH_FLATPAK` is `true`, pushing a
+stable version tag builds and publishes a signed Flatpak repository to
 GitHub Pages. A manual Flatpak run on `main` also publishes, so packaging
 fixes can be shipped without a new upstream release. Pull request builds
-and prerelease builds produce bundle artifacts. A
+and prerelease builds produce bundle artifacts. After a tag build passes,
+the workflow creates its GitHub Release and attaches the app and add-on
+bundles. For stable publication, it waits for the Pages deployment to
+succeed first. Rerunning a completed tag build replaces the release's
+bundle assets. A
 separate job, which never runs upstream build code, downloads the published
 repository and checks it against the signing key. It adds the tested builds
 as new signed commits, generates static deltas, signs the software catalog
@@ -265,8 +269,23 @@ To set publishing up:
    below).
 3. Set the variable:
    `gh variable set PUBLISH_FLATPAK --body true --repo nosini/gallery-dl-flatpak`.
-4. Publish a GitHub release with a tag pointing to the commit to build,
+4. Push a version tag pointing to the commit to build,
    or run the Flatpak workflow manually on `main`.
+
+Stable tags have the form `v1.32.16`. A numeric suffix such as
+`v1.32.16-1` identifies a stable packaging revision of the same upstream
+version. Other suffixes, such as `v1.32.17-rc1`, create GitHub prereleases
+without replacing the stable Flatpak repository. Tag the commit that
+contains the intended package pins and workflow:
+
+```sh
+git tag -s v1.32.16 -m 'gallery-dl 1.32.16'
+git push origin v1.32.16
+```
+
+If **Settings → Environments → github-pages** restricts deployments to
+selected branches and tags, retain a Branch rule for `main` and add a
+Tag rule for `v*`.
 
 ### Signing key
 
@@ -320,7 +339,7 @@ are updated by regenerating the Python modules (below). If anything is
 newer, the workflow updates the pins, adds a release to the metainfo file
 when gallery-dl changed, pushes the change to the `update/upstream` branch,
 opens a pull request and starts the Flatpak build of that branch. Its result
-shows on the pull request. After merging, publish a GitHub release at the
+shows on the pull request. After merging, push a version tag at the
 merged commit to build and publish the update.
 
 The workflow needs **Allow GitHub Actions to create and approve pull
@@ -331,8 +350,8 @@ the pending commit, creates its pull request and starts its build.
 
 To merge updates without review, set the variable `AUTO_MERGE_UPDATES` to
 `true`. The workflow then waits for the build and merges the pull request
-when the build, the installed-app checks and the keyring test pass. Publish
-a GitHub release afterwards to ship it. A failed build leaves the pull
+when the build, the installed-app checks and the keyring test pass. Push
+a version tag afterwards to ship it. A failed build leaves the pull
 request open.
 
 Changes pushed to `update/upstream` by anyone but the workflow are kept:
