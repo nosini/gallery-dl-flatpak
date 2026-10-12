@@ -316,6 +316,9 @@ jobs:
       - name: Create the release and upload the tested bundles
         run: |
           if gh release view "$TAG" > /dev/null 2>&1; then
+            if [[ "$STABLE" != true ]]; then
+              gh release edit "$TAG" --prerelease --latest=false
+            fi
             gh release upload "$TAG" bundles/*.flatpak --clobber
           else
             options=(--verify-tag --title "$APP_NAME ${TAG#v}" --generate-notes)

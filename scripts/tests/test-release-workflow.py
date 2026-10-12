@@ -102,6 +102,24 @@ class ReleaseWorkflowTests(unittest.TestCase):
         result, _ = self.release_commands(fail="true")
         self.assertNotEqual(result.returncode, 0)
 
+    def test_existing_prerelease_is_demoted_before_upload(self):
+        result, commands = self.release_commands(stable="false", exists="true")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(commands[0], [
+            "release", "edit", "v1.2.3", "--prerelease", "--latest=false",
+        ])
+        self.assertEqual(len(commands), 2)
+        self.assertEqual(commands[1][:3], ["release", "upload", "v1.2.3"])
+        self.assertIn("--clobber", commands[1])
+
+    def test_failed_prerelease_edit_prevents_upload(self):
+        result, commands = self.release_commands(
+            stable="false", exists="true", fail="true",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(commands[0][:2], ["release", "edit"])
+
 
 if __name__ == "__main__":
     unittest.main()
