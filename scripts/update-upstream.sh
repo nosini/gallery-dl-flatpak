@@ -48,10 +48,16 @@ if git diff --quiet; then
   echo 'All sources are up to date.'
   exit 0
 fi
-# Leave an identical pending update alone instead of rebuilding it.
+# Leave an identical pending update alone once its pull request exists.
+# A failed PR creation leaves the pushed branch behind; retry that step.
+reuse=false
 if [[ "$manual" == false && "$pending" == true ]] && git diff --quiet "origin/$BRANCH"; then
-  echo "$BRANCH already contains this update."
-  exit 0
+  if [[ -n "$pr" ]]; then
+    echo "$BRANCH already contains this update."
+    exit 0
+  fi
+  reuse=true
+  echo "$BRANCH already contains this update but has no open pull request; retrying."
 fi
 
 version=$(sed -n 's/.*<release version="\([^"]*\)".*/\1/p' "$APP_ID.metainfo.xml" | head -1)
@@ -77,12 +83,18 @@ if [[ "$manual" == true ]]; then
   gh pr edit "$BRANCH" --title "$title"
   gh pr comment "$BRANCH" --body-file "${log}.body"
 else
-  git switch --quiet -c "$BRANCH"
-  git commit -qam "$title"
-  git push --quiet --force-with-lease="refs/heads/$BRANCH:$lease" origin "$BRANCH" || {
-    echo "$BRANCH changed while checking for updates; leaving it alone." >&2
-    exit 1
-  }
+  if [[ "$reuse" == true ]]; then
+    # The checker has reproduced this commit's tree; discard that diff so
+    # checkout can reuse the existing commit instead of making another one.
+    git switch --discard-changes --quiet -c "$BRANCH" "origin/$BRANCH"
+  else
+    git switch --quiet -c "$BRANCH"
+    git commit -qam "$title"
+    git push --quiet --force-with-lease="refs/heads/$BRANCH:$lease" origin "$BRANCH" || {
+      echo "$BRANCH changed while checking for updates; leaving it alone." >&2
+      exit 1
+    }
+  fi
   if [[ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]]; then
     gh pr create --head "$BRANCH" --title "$title" --body-file "${log}.body"
   else

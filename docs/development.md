@@ -318,6 +318,9 @@ shows on the pull request. Merging the pull request publishes the update.
 
 The workflow needs **Allow GitHub Actions to create and approve pull
 requests** under **Settings → Actions → General**.
+If pull request creation failed after the branch was pushed, enable that
+setting and start a new **Update** run from `main`. The workflow reuses
+the pending commit, creates its pull request and starts its build.
 
 To merge updates without review, set the variable `AUTO_MERGE_UPDATES` to
 `true`. The workflow then waits for the build, merges the pull request when

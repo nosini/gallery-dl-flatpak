@@ -23,7 +23,13 @@ cat > "$tmp/bin/gh" <<'EOF'
 echo "$*" >> "$TEST_DIR/gh.log"
 case "$1 $2" in
   'pr list') cat "$TEST_DIR/open-pr" 2>/dev/null || true ;;
-  'pr create') echo 7 > "$TEST_DIR/open-pr" ;;
+  'pr create')
+    if [[ "${PR_CREATE_FAIL:-}" == true ]]; then
+      echo 'GitHub Actions is not permitted to create pull requests.' >&2
+      exit 1
+    fi
+    echo 7 > "$TEST_DIR/open-pr"
+    ;;
 esac
 EOF
 chmod +x "$tmp/bin/gh"
@@ -73,12 +79,26 @@ branch_head() {
   git -C "$tmp/origin.git" rev-parse --verify --quiet refs/heads/update/upstream
 }
 
-# A new release becomes a branch and a pull request.
+# A denied pull request leaves the pushed update available for a retry.
+if PR_CREATE_FAIL=true run 2.0; then
+  fail 'ignored a pull request creation failure'
+fi
+head=$(branch_head) || fail 'no update branch after denied pull request'
+[[ ! -e "$tmp/open-pr" ]] || fail 'denied pull request was created'
+[[ ! -e "$tmp/output" ]] || fail 'reported success after denied pull request'
+if grep -q '^workflow run' "$tmp/gh.log"; then
+  fail 'started a build after denied pull request'
+fi
+
+# Retrying the same release creates its pull request and starts the build,
+# preserving the already-pushed commit.
 run 2.0
-head=$(branch_head) || fail 'no update branch'
+[[ "$(branch_head)" == "$head" ]] || fail 'retry replaced the update commit'
 git -C "$tmp/origin.git" log -1 --format=%s "$head" | grep -qx 'Update Example to 2.0' \
   || fail 'wrong title'
-grep -q '^pr create' "$tmp/gh.log" || fail 'no pull request'
+[[ -e "$tmp/open-pr" ]] || fail 'no pull request'
+grep -q '^workflow run flatpak.yml --ref update/upstream$' "$tmp/gh.log" || fail 'no build'
+grep -qx "commit=$head" "$tmp/output" || fail 'wrong build commit'
 grep -qx 'manual=false' "$tmp/output" || fail 'expected manual=false'
 
 # The same release again leaves the branch alone.
