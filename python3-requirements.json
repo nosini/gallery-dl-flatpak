@@ -7,8 +7,8 @@
   "sources": [
     {
       "type": "file",
-      "url": "https://files.pythonhosted.org/packages/08/ba/95dd616042484f7c83a06974388b37b837732740ee70bc5dc715b5fcd55a/certifi-2026.10.18-py3-none-any.whl",
-      "sha256": "73191c47aaa79da394e8fee2dbc2ec827432cab56311122c9e47abf79e390f62",
+      "url": "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl",
+      "sha256": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1",
       "x-checker-data": {
         "type": "pypi",
         "name": "certifi",
@@ -22,8 +22,8 @@
     },
     {
       "type": "file",
-      "url": "https://files.pythonhosted.org/packages/50/2f/10d3f717e3dc38688ce07424652d7e6c5f606d8b7644af4c16e0dc016527/gallery_dl-1.32.17-py3-none-any.whl",
-      "sha256": "f88ddeb788506f33385e541dbbfba57376ed04bbf6f3f635249a9dd3a78930ed",
+      "url": "https://files.pythonhosted.org/packages/f5/81/03b8f628bd5c91a62c9c8152358c3b381933dc3fdf6c5aea100e8582da80/gallery_dl-1.32.18-py3-none-any.whl",
+      "sha256": "f9081654ee4a0d6f2778376882ab7cecbf3e7ba15ed65b20416388b8789be535",
       "x-checker-data": {
         "type": "pypi",
         "name": "gallery-dl",
