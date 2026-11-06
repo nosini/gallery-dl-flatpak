@@ -354,6 +354,32 @@ updates.
 published packages into the shared `nosini` remote. Its `apps.json` lists
 gallery-dl with all nine add-ons; add new add-ons there too.
 
+After a successful Pages deployment, the `announce` job sends an
+`app-published` event to the collector, so the shared remote picks up the
+update without waiting for its six-hour schedule. Failed deployments,
+prereleases and cache-only builds don't announce a publication. A failed
+notification leaves the published repository intact; rerun the failed job
+after correcting the token, or start collection manually.
+
+Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new)
+with access to `nosini/flatpak-repo` only and **Contents: Read and write**.
+Store it in this repository as `FLATPAK_REPO_DISPATCH_TOKEN`:
+
+```sh
+gh secret set FLATPAK_REPO_DISPATCH_TOKEN --repo nosini/gallery-dl-flatpak
+```
+
+Enter the token at the prompt. The workflow passes it only to the
+notification job, which neither checks out nor builds code. The job fails
+with a clear error if the secret is missing. GitHub's default `GITHUB_TOKEN`
+can't send events to a different repository.
+
+To collect a release that has already been published:
+
+```sh
+gh workflow run publish.yml --repo nosini/flatpak-repo --ref main
+```
+
 ## Updating
 
 `.github/workflows/update.yml` runs
