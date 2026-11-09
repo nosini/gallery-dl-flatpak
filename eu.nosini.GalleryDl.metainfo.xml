@@ -17,8 +17,8 @@
     <p>
       Optional add-ons provide video downloads with yt-dlp, SOCKS proxies,
       Brotli-compressed responses, YAML configuration, the desktop keyring,
-      PostgreSQL archives, system certificates, Jinja templates and accurate
-      Ugoira timing with mkvmerge.
+      PostgreSQL archives, system certificates, Jinja templates, blablalink.com
+      and accurate Ugoira timing with mkvmerge.
     </p>
     <p>
       This is an unofficial Flatpak build of the upstream project.

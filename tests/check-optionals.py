@@ -166,6 +166,18 @@ def check(addon):
     elif slug == "jinja":
         import jinja2
         assert jinja2.Template("{{ name|upper }}").render(name="gallery-dl") == "GALLERY-DL"
+    elif slug == "blablalink":
+        from gallery_dl import extractor
+        import gallery_dl_flatpak
+        gallery_dl_flatpak.load_extractors()
+        site = "https://www.blablalink.com"
+        for url, subcategory in [
+            (f"{site}/post/detail?post_uuid=1234567890", "post"),
+            (f"{site}/user?openid=MjkwODAtMTgzNzcwODg5ODc3OTg4NDczNDM=", "user"),
+            (f"{site}/user?openid=29080-18377088987798847343&tab=favorites", "favorites"),
+        ]:
+            found = extractor.find(url)
+            assert found and (found.category, found.subcategory) == ("blablalink", subcategory), url
     elif slug == "mkvmerge":
         subprocess.run(["mkvmerge", "--version"], check=True)
         with tempfile.TemporaryDirectory() as tmp:

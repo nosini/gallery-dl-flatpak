@@ -55,6 +55,43 @@ class DiscardedPaths(unittest.TestCase):
                                   "/home/user/café"))
 
 
+class AddonExtractors(unittest.TestCase):
+    def test_registers_installed_extractors(self):
+        from gallery_dl import extractor
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "gallery_dl_blablalink.py").write_text(
+                "from gallery_dl.extractor.common import Extractor\n"
+                "class Fake(Extractor):\n"
+                "    category = 'blablalinktest'\n"
+                "    subcategory = 'post'\n"
+                "    pattern = r'(?:https?://)?blablalink\\.test/(\\d+)'\n")
+            sys.path.insert(0, tmp)
+            cache = list(extractor._cache)
+            try:
+                gallery_dl_flatpak.load_extractors()
+                found = extractor.find("https://blablalink.test/42")
+                self.assertEqual(found.category, "blablalinktest")
+            finally:
+                sys.path.remove(tmp)
+                sys.modules.pop("gallery_dl_blablalink", None)
+                extractor._cache[:] = cache
+
+    def test_missing_addon_is_ignored(self):
+        gallery_dl_flatpak.load_extractors()
+
+    def test_broken_addon_only_warns(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "gallery_dl_blablalink.py").write_text("raise RuntimeError('boom')\n")
+            sys.path.insert(0, tmp)
+            try:
+                with mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                    gallery_dl_flatpak.load_extractors()
+            finally:
+                sys.path.remove(tmp)
+                sys.modules.pop("gallery_dl_blablalink", None)
+        self.assertIn("RuntimeError: boom", stderr.getvalue())
+
+
 class DownloadGuard(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

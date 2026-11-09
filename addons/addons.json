@@ -159,6 +159,26 @@
     ]
   },
   {
+    "suffix": "Blablalink",
+    "slug": "blablalink",
+    "name": "blablalink.com support",
+    "summary": "Download posts, user posts and favorites from blablalink.com (added by this package)",
+    "description": [
+      "This optional add-on for gallery-dl downloads the images of posts, all posts of a user, a user's favorites and the feeds of blablalink.com, the NIKKE community site. It needs no login.",
+      "The extractor is a separate project, nosini/blablalink-downloader, and is not part of upstream gallery-dl. This package loads it into gallery-dl when the add-on is installed, so report problems with it to that project."
+    ],
+    "license": "GPL-2.0-only",
+    "homepage": "https://github.com/nosini/blablalink-downloader",
+    "developer": {
+      "id": "io.github.nosini",
+      "name": "nosini"
+    },
+    "requirements": [],
+    "imports": [
+      "gallery_dl_blablalink"
+    ]
+  },
+  {
     "suffix": "MkvMerge",
     "slug": "mkvmerge",
     "name": "Accurate Ugoira timecodes",

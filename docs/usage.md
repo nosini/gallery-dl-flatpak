@@ -164,6 +164,7 @@ features you need under **Add-ons**. Each add-on can be installed independently:
 | Add-on | Feature | Installer |
 | --- | --- | --- |
 | yt-dlp support for gallery-dl | HLS/DASH video downloads and yt-dlp integration | [yt-dlp](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-yt-dlp.flatpakref) |
+| blablalink.com support | Posts, user posts, [favorites](#downloading-from-blablalinkcom) and feeds of blablalink.com (added by this package) | [Blablalink](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-blablalink.flatpakref) |
 | Accurate Ugoira timecodes | mkvmerge for precise Matroska frame timing | [mkvmerge](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-mkvmerge.flatpakref) |
 | SOCKS proxy support | PySocks for SOCKS proxies | [PySocks](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-pysocks.flatpakref) |
 | Brotli compression support | Brotli-compressed web responses | [Brotli](https://nosini.github.io/gallery-dl-flatpak/gallery-dl-brotli.flatpakref) |
@@ -215,3 +216,25 @@ commands used by gallery-dl postprocessors.
 See the upstream [options](https://gdl-org.github.io/docs/options.html) and
 [configuration reference](https://gdl-org.github.io/docs/configuration.html)
 for more ways to customize downloads.
+
+## Downloading from blablalink.com
+
+The **blablalink.com support** add-on adds an extractor for
+[blablalink.com](https://www.blablalink.com/), the NIKKE community site. It
+needs no login. The extractor comes from the separate
+[blablalink-downloader](https://github.com/nosini/blablalink-downloader)
+project, not from upstream gallery-dl; the package loads it when the add-on
+is installed. Quote the URLs, since they contain `&`:
+
+```sh
+flatpak run --filesystem=xdg-download:rw eu.nosini.GalleryDl \
+  -d "$(xdg-user-dir DOWNLOAD)" \
+  'https://www.blablalink.com/user?openid=MjkwODAt…=&tab=favorites'
+```
+
+It handles post links, profile links (copy the address of the profile page),
+a profile link with `&tab=favorites` for the user's favorites, and the home
+feed. Settings go under `extractor.blablalink` in the
+[configuration](https://gdl-org.github.io/docs/configuration.html), like for
+any other site. The extractor's README lists the URL forms and the available
+metadata fields.

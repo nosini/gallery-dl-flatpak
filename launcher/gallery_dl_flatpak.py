@@ -5,10 +5,13 @@ are created on the sandbox's temporary root filesystem, and files saved there
 are lost when gallery-dl exits. gallery-dl therefore refuses to download into
 them and explains which permission is needed.
 
+It also registers the extractors of the Blablalink add-on, when installed.
+
 This is part of the gallery-dl Flatpak package, not of upstream gallery-dl.
 """
 
 import functools
+import importlib.util
 import os
 import re
 import sys
@@ -69,8 +72,23 @@ def install():
     job.DownloadJob.handle_directory = handle_directory
 
 
+def load_extractors():
+    """Register the extractors of the Blablalink add-on, if it is installed."""
+    if importlib.util.find_spec("gallery_dl_blablalink") is None:
+        return
+    try:
+        import gallery_dl_blablalink
+        from gallery_dl import extractor
+        extractor.add_module(gallery_dl_blablalink)
+    except Exception as exc:
+        # A broken add-on mustn't stop gallery-dl from working.
+        print(f"gallery-dl-flatpak: can't load the Blablalink add-on "
+              f"({exc.__class__.__name__}: {exc})", file=sys.stderr)
+
+
 def main():
     install()
+    load_extractors()
     from gallery_dl import main
     return main()
 

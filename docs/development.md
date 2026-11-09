@@ -37,7 +37,7 @@ reading the source.
 
 The manifest installs gallery-dl's release wheel and its dependencies from
 PyPI, pinned by URL and SHA-256. It exports the app `eu.nosini.GalleryDl` and
-nine optional add-ons, each a separate runtime ref. The
+ten optional add-ons, each a separate runtime ref. The
 [bundled-extension mechanism](https://docs.flatpak.org/en/latest/extension.html#bundled-extensions)
 builds them together with the app but leaves their files out of the app's
 ref, and `no-autodownload` keeps them optional. Installed add-ons are mounted
@@ -65,6 +65,17 @@ Before gallery-dl starts, `launcher/gallery_dl_flatpak.py` wraps
 `/proc/self/mountinfo`; a folder on the sandbox's temporary root filesystem
 isn't shared with the host, so gallery-dl stops with the permission to grant
 instead of saving files that would be lost.
+
+The Blablalink add-on contains one file, the extractor of
+[blablalink-downloader](https://github.com/nosini/blablalink-downloader),
+installed as `gallery_dl_blablalink` into its own site-packages and fetched
+from a git commit pinned in the manifest. `load_extractors()` in the launcher
+imports it when the add-on is mounted and registers it with
+`gallery_dl.extractor.add_module()`. A failure to load only prints a warning.
+The add-on doesn't use `usercustomize`, which the SecretStorage add-on owns,
+and it doesn't use `-X`, which would replace the user's own
+`extractor.module-sources`. It has no pip requirements, so the dependency
+generator skips it. To update it, change the commit in the manifest.
 
 The SecretStorage add-on also lets gallery-dl read site options from the
 desktop keyring. This feature belongs to this package, not to upstream
@@ -352,7 +363,8 @@ updates.
 
 [flatpak-repo](https://github.com/nosini/flatpak-repo) collects the
 published packages into the shared `nosini` remote. Its `apps.json` lists
-gallery-dl with all nine add-ons; add new add-ons there too.
+gallery-dl once; the add-ons are collected automatically, as every
+`eu.nosini.GalleryDl.*` runtime ref on the app's branch.
 
 After a successful Pages deployment, the `announce` job sends an
 `app-published` event to the collector, so the shared remote picks up the
