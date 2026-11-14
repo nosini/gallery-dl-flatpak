@@ -92,7 +92,11 @@ def write_module(packages, path, name, prefix):
 
 
 def requirement_lines(path):
-    lines = (line.split("#", 1)[0].strip() for line in path.read_text().splitlines())
+    # pip only treats `#` as a comment at the start of a line or after
+    # whitespace; elsewhere it is part of the requirement, such as the hash
+    # fragment of a direct URL.
+    lines = (re.sub(r"(^|\s)#.*", "", line).strip()
+             for line in path.read_text().splitlines())
     return [line for line in lines if line]
 
 

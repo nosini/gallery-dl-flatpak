@@ -27,7 +27,8 @@
 - `scripts/prepare-repository.sh`: signs tested builds for publishing.
 - `scripts/update-upstream.sh`: turns the update checker's changes into a
   pull request, preserving fixes on an open update branch.
-- `scripts/tests/`: tests for the publishing and update scripts.
+- `scripts/tests/`: tests for the publishing and update scripts and the
+  Python dependency generator.
 - `scripts/bundle-addons.sh`: writes a single-file bundle of each add-on.
 
 An upstream checkout in `upstream/` is ignored by Git. It is handy for
@@ -229,7 +230,8 @@ x86_64-only AppImage, and the generator pins x86_64 wheels.
 
 `.github/workflows/checks.yml` lints shell scripts and workflows, parses the
 manifest and metadata files, and tests the update script, optional-package
-checks and add-on metadata without building the app. The publishing test
+checks, add-on metadata and the dependency generator's requirement parsing
+without building the app. The publishing test
 exports small fake apps and add-ons, publishes them to a local web server,
 and checks history, signatures, static deltas and installers. Run the script
 tests locally with:
@@ -242,63 +244,71 @@ bash scripts/tests/test-prepare-repository.sh
 ### Build cache
 
 CI restores `.flatpak-builder`, including downloaded sources, completed
-module results and the C/C++ compiler cache. Flatpak checks the inputs and
-rebuilds affected modules when sources, dependencies, patches or the SDK
+module results and the generated Python modules. Flatpak checks the inputs
+and rebuilds affected modules when sources, dependencies, patches or the SDK
 change. Lint, installed-app and add-on catalog checks still run on every
-build. The cache is saved after those checks and add-on bundling succeed.
+build, and a snapshot is saved only after they pass.
 
-Each run saves a fresh snapshot, separated by app ID, architecture, Flatpak
-branch and build workflow version, which includes the CI container image.
-The next run restores the newest compatible snapshot. To start a new cache
-namespace, bump `flatpak-v1` in both the key and restore prefix in the
-workflow. Cache misses build normally.
+The key covers this workflow and `python3-requirements.json`, so changing
+either starts a new snapshot; otherwise the newest earlier snapshot is
+restored. The container image is pinned by digest, so a new image means a
+workflow change and a new key. Downloads are carried over and not pruned when
+a dependency is dropped, so a snapshot grows slowly. To start over, bump
+`CACHE_PREFIX` in the workflow; the key and the restore prefix both use it,
+so they can't drift apart. Cache misses build normally.
 
-GitHub lets tags and pull requests restore the default branch's cache,
-but caches from one tag cannot be restored by another tag. To populate the
-shared cache without publishing or creating a release, run the workflow on
-`main` with **cache_only** selected, or run this from the checkout:
+Snapshots are saved only on `main`, and only after the tests and the artifact
+upload, because a snapshot saved on a tag or pull request can only be restored
+by reruns of that ref. GitHub removes caches unused for more than seven days
+and evicts older entries when the repository's storage limit is reached; see
+its [cache access and retention rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
+
+To populate the cache before a release without publishing, run the workflow
+on `main` without the **publish** input, or use:
 
 ```sh
-gh workflow run flatpak.yml --ref main -f cache_only=true
+gh workflow run flatpak.yml --ref main
 ```
-
-Refresh it before releases when needed. GitHub removes caches unused for
-more than seven days and evicts older entries when the repository's storage
-limit is reached; see its [cache access and retention rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
 
 ### Publishing
 
 When the repository variable `PUBLISH_FLATPAK` is `true`, pushing a
 stable version tag builds and publishes a signed Flatpak repository to
-GitHub Pages. A manual Flatpak run on `main` without **cache_only** also
-publishes, so packaging fixes can be shipped without a new upstream
-release. Pull request builds and prerelease builds produce bundle artifacts.
-After a tag build passes, the workflow creates its GitHub Release and
-attaches the app and add-on bundles. For stable publication, it waits for the Pages deployment to
-succeed first. Rerunning a completed tag build replaces the release's
-bundle assets. A
-separate job, which never runs upstream build code, downloads the published
-repository and checks it against the signing key. It adds the tested builds
-as new signed commits, generates static deltas, signs the software catalog
-and summary, and writes `gallery-dl.flatpakrepo`,
-`gallery-dl.flatpakref` and a `gallery-dl-<slug>.flatpakref` for each add-on,
-with the public key embedded. The remote and app installers include the
-app's summary and a copy of its icon for software centers; add-on installers
-include their name and description and use the same icon. Before deploying,
-a fresh remote that only knows the public key must accept the result,
-including the catalog's links between the app and its add-ons.
+GitHub Pages. Manual runs build and test only unless the **publish** input
+is selected; they can publish from `main`, so packaging fixes can be shipped
+without a new upstream release. Pull request builds and prerelease builds
+produce bundle artifacts and never publish. Runs that can publish wait for
+one another, so a tag pushed during another publication isn't built from an
+outdated repository head. After a tag build passes, the workflow creates its
+GitHub Release and attaches the app and add-on bundles. For stable
+publication, it waits for the Pages deployment to succeed first. Rerunning a
+completed tag build replaces the release's bundle assets. A separate job,
+which never runs upstream build code, downloads the published repository and
+checks it against the signing key. It adds the tested builds as new signed
+commits, generates static deltas, signs the software catalog and summary, and
+writes `gallery-dl.flatpakrepo`, `gallery-dl.flatpakref` and a
+`gallery-dl-<slug>.flatpakref` for each add-on, with the public key embedded.
+The remote and app installers include the app's summary and a copy of its
+icon for software centers; add-on installers include their name and
+description and use the same icon. Before deploying, a fresh remote that only
+knows the public key must accept the summary, every app and extension commit,
+and each architecture's software catalog, including the catalog's links
+between the app and its add-ons.
 
 The repository keeps five previous versions of the app and each add-on,
 so users can return to one with `flatpak update --commit`. A build whose
-files didn't change adds no version. Static deltas let Flatpak download
-installs and updates as a few larger files rather than one request per
-file. If the published repository can't be downloaded or doesn't match the
-signing key, the job fails. Set `FLATPAK_KEEP_HISTORY` to `false` to publish
-a new repository without the earlier versions.
+files didn't change adds no version. A build older than the published one,
+such as a rerun of an earlier tag or a packaging revision before the current
+version, is refused, because it would become the head and downgrade users on
+their next update. Static deltas let Flatpak download installs and updates as
+a few larger files rather than one request per file. If the published
+repository can't be downloaded or doesn't match the signing key, the job
+fails. Set `FLATPAK_KEEP_HISTORY` to `false` to publish a new repository
+without the earlier versions.
 
 The repository URL defaults to `https://OWNER.github.io/REPOSITORY/`. For a
-custom domain, set the `FLATPAK_REPO_URL` variable to the real URL,
-including the trailing slash.
+custom domain, set the `FLATPAK_REPO_URL` variable to the real URL. The
+trailing slash is optional.
 
 To set publishing up:
 
@@ -307,23 +317,26 @@ To set publishing up:
    below).
 3. Set the variable:
    `gh variable set PUBLISH_FLATPAK --body true --repo nosini/gallery-dl-flatpak`.
-4. Push a version tag pointing to the commit to build,
-   or run the Flatpak workflow manually on `main`.
+4. If **Settings → Environments → github-pages** restricts deployments to
+   selected branches and tags, retain a Branch rule for `main` and add a
+   Tag rule for `v*`. These are separate rules; allowing `main` alone does
+   not allow tags. See GitHub's
+   [deployment branch and tag rules](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments#deployment-branches-and-tags).
+5. Push a version tag pointing to the commit to build, or run the Flatpak
+   workflow manually on `main` with **publish** selected.
 
 Stable tags have the form `v1.32.16`. A numeric suffix such as
 `v1.32.16-1` identifies a stable packaging revision of the same upstream
 version. Other suffixes, such as `v1.32.17-rc1`, create GitHub prereleases
-without replacing the stable Flatpak repository. Tag the commit that
-contains the intended package pins and workflow:
+without replacing the stable Flatpak repository. The workflow also fails a
+stable tag whose version, without a numeric packaging suffix, isn't the
+newest release in the metainfo file. Tag the commit that contains the
+intended package pins and workflow:
 
 ```sh
 git tag -s v1.32.16 -m 'gallery-dl 1.32.16'
 git push origin v1.32.16
 ```
-
-If **Settings → Environments → github-pages** restricts deployments to
-selected branches and tags, retain a Branch rule for `main` and add a
-Tag rule for `v*`.
 
 ### Signing key
 
@@ -363,15 +376,34 @@ updates.
 
 [flatpak-repo](https://github.com/nosini/flatpak-repo) collects the
 published packages into the shared `nosini` remote. Its `apps.json` lists
-gallery-dl once; the add-ons are collected automatically, as every
+gallery-dl once, with the URL of its `.flatpakref` and the fingerprint of its
+signing key:
+
+```json
+{
+  "flatpakref": "https://nosini.github.io/gallery-dl-flatpak/gallery-dl.flatpakref",
+  "key": "4B7655163EE1150C2DA695445E832963C61C0F80"
+}
+```
+
+The fingerprint is printed by
+
+```sh
+curl -fsS https://nosini.github.io/gallery-dl-flatpak/gallery-dl.flatpakref \
+  | sed -n 's/^GPGKey=//p' | base64 -d | gpg --show-keys
+```
+
+Compare it with the key in this repository's `FLATPAK_GPG_PRIVATE_KEY`
+secret before trusting it. The add-ons are collected automatically, as every
 `eu.nosini.GalleryDl.*` runtime ref on the app's branch.
 
 After a successful Pages deployment, the `announce` job sends an
 `app-published` event to the collector, so the shared remote picks up the
 update without waiting for its six-hour schedule. Failed deployments,
-prereleases and cache-only builds don't announce a publication. A failed
-notification leaves the published repository intact; rerun the failed job
-after correcting the token, or start collection manually.
+prereleases and builds without the **publish** input don't announce a
+publication. A failed notification leaves the published repository intact;
+rerun the failed job after correcting the token, or start collection
+manually.
 
 Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new)
 with access to `nosini/flatpak-repo` only and **Contents: Read and write**.
@@ -461,6 +493,12 @@ keep shared dependencies at the same version across add-ons. The script
 installs prebuilt wheels for every package, also for those with native code,
 which would otherwise need Rust or C toolchains to build.
 
+The generated files pin exact wheels, so they change only when the script
+runs. Dependabot tracks the GitHub Actions but not these entries. To pick up
+upstream releases, including security fixes, rerun the script before a
+release and commit the changed `python3-requirements.json` and
+`addons/python3-*.json`; nothing in CI regenerates them.
+
 To add an add-on, add it to `addons/addons.json`, and in the manifest
 declare its extension, include its module and add its directories to
 `PYTHONPATH` or `PATH`. Then give it a functional check in
@@ -469,9 +507,21 @@ follow the list.
 
 ## Moving to a newer runtime
 
-Change `runtime-version` in the manifest and the image tag in
-`.github/workflows/flatpak.yml` (`freedesktop-26.08`). If the new runtime
-has a different Python version, change the `python3.14` paths in the
+Change `runtime-version` in the manifest. The container image tag
+`freedesktop-VERSION` appears twice in `.github/workflows/flatpak.yml`, in
+the `build` and `publish` jobs, and again in the `publishing` job of
+`.github/workflows/checks.yml`; keep all three in step with the manifest.
+Each is pinned by digest (`freedesktop-VERSION@sha256:...`), because the
+publish job imports the signing key inside it and the tag can be moved.
+Dependabot doesn't update these, so look up the new tag's digest, for example
+with `skopeo inspect --format '{{.Digest}}'
+docker://ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-VERSION`,
+and refresh it the same way to pick up a rebuilt image. The actions are
+pinned by commit, which Dependabot keeps updated, and the actionlint download
+in `checks.yml` by checksum; update its version and checksum by hand.
+`checks.yml` also pins the runtimes' Python in `python-version` for the
+script tests; change it when the runtime's Python version changes. If the new
+runtime has a different Python version, change the `python3.14` paths in the
 manifest and in `tests/check-installed.sh`, and the version in
 `scripts/generate-python-deps.py`, then regenerate the Python modules.
 mkvmerge's library list in `addons/package-mkvmerge.py` assumes what the
