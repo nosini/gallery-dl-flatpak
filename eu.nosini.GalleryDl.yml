@@ -154,17 +154,17 @@ modules:
       - install -Dm644 COPYING README.md -t "${FLATPAK_DEST}/extensions/mkvmerge/share/doc/mkvmerge"
     sources:
       - type: file
-        url: https://mkvtoolnix.download/appimage/MKVToolNix_GUI-103.0-x86_64.AppImage
+        url: https://mkvtoolnix.download/appimage/MKVToolNix_GUI-104.0-x86_64.AppImage
         dest-filename: mkvtoolnix.AppImage
-        sha256: fefc571382f090d65b1038ba36383222167d248ff9c9a54f6678aa21182a03ee
+        sha256: 17bb380878322e33fa4a80a8f7129c7ddbdc51769ac5e856f22a7c8fb4229a6a
         x-checker-data:
           type: html
           url: https://mkvtoolnix.download/appimage/
           version-pattern: MKVToolNix_GUI-([\d.]+)-x86_64\.AppImage
           url-template: https://mkvtoolnix.download/appimage/MKVToolNix_GUI-$version-x86_64.AppImage
       - type: archive
-        url: https://mkvtoolnix.download/sources/mkvtoolnix-103.0.tar.xz
-        sha256: d609bc395c409eade05d0a3a5aedd26e09739e232ed03b0f937cf8bd9448c590
+        url: https://mkvtoolnix.download/sources/mkvtoolnix-104.0.tar.xz
+        sha256: 8f07b39d6cea1aad029f253e0e6e6a54c0e0f3ba91bfc3b2157915630d48a62b
         x-checker-data:
           type: html
           url: https://mkvtoolnix.download/sources/
